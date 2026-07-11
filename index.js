@@ -1,4 +1,4 @@
-﻿const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwoQNhSR9cagzxvZTkjbY5PtiQBySIZUYaqu3yE9wRygjV-F81DESDEM0QdAdfU6QX4g/exec";
+﻿const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwTbo6hm2CrEH6ykavIkX6yttDDc129kwr4mwIMMUbYmiPWHg89osLXGP-rjJJJFUBRXQ/exec";
 
 const state = {
   profiles: [],
@@ -19,6 +19,8 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000;
 let inactivityTimer = null;
 let activeReceiptTitle = "";
+let activeNoteContext = null;
+let activeMarriageProfile = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   bindUi();
@@ -88,6 +90,8 @@ function bindUi() {
     });
   }
   if ($("#paymentForm")) $("#paymentForm").addEventListener("submit", submitPayment);
+  if ($("#profileNoteForm")) $("#profileNoteForm").addEventListener("submit", submitProfileNote);
+  if ($("#marriageForm")) $("#marriageForm").addEventListener("submit", submitMarriageComplete);
   bindPhotoCropper();
   if ($("#printReceiptBtn")) $("#printReceiptBtn").addEventListener("click", printReceipt);
   if ($("#dashboardSearch")) {
@@ -127,7 +131,7 @@ function bindUi() {
   $("#resetFilters").addEventListener("click", () => {
     $("#quickSearch").reset();
     $("#sideFilters").reset();
-    state.filtered = state.profiles.filter((profile) => profile.status === "verified");
+    state.filtered = state.profiles.filter((profile) => profile.status === "verified" && String(profile.marriageStatus || "").toLowerCase() !== "completed");
     renderCards(state.filtered);
   });
 
@@ -162,7 +166,7 @@ async function loadPublicData() {
     state.profiles = cleanProfiles(Array.isArray(data.profiles) ? data.profiles : Array.isArray(data) ? data : []);
     state.agents = cleanAgents(Array.isArray(data.agents) ? data.agents : []);
     state.stories = cleanStories(Array.isArray(data.stories) ? data.stories : []);
-    state.filtered = state.profiles.filter((profile) => profile.status === "verified");
+    state.filtered = state.profiles.filter((profile) => profile.status === "verified" && String(profile.marriageStatus || "").toLowerCase() !== "completed");
     renderStats();
     renderCards(state.filtered);
     renderStories();
@@ -194,6 +198,7 @@ async function loadDashboardData() {
 function applyFilters(formData) {
   const filters = Object.fromEntries(formData.entries());
   state.filtered = state.profiles.filter((profile) => {
+    if (String(profile.marriageStatus || "").toLowerCase() === "completed") return false;
     if (profile.status !== "verified") return false;
     if (filters.ageMin && Number(profile.age || 0) < Number(filters.ageMin)) return false;
     if (filters.ageMax && Number(profile.age || 0) > Number(filters.ageMax)) return false;
@@ -256,8 +261,9 @@ function profileCard(profile) {
 }
 
 function renderStats() {
-  const total = state.profiles.length;
-  const verified = state.profiles.filter((profile) => profile.status === "verified").length;
+  const activeProfiles = activeClientProfiles();
+  const total = activeProfiles.length;
+  const verified = activeProfiles.filter((profile) => profile.status === "verified").length;
   if ($("#statProfiles")) $("#statProfiles").textContent = total;
   if ($("#statVerified")) $("#statVerified").textContent = verified;
   if ($("#statAgents")) $("#statAgents").textContent = state.agents.length;
@@ -320,8 +326,8 @@ function showDashboard() {
 function renderTabs() {
   const tabs = $("#dashboardTabs");
   const items = state.session.role === "admin"
-    ? [["profiles", "Profiles"], ["payments", "Payments"], ["agents", "Agents"], ["agentForm", "Create Agent"], ["stories", "Stories"]]
-    : [["profiles", "My Clients"], ["payments", "Payments"]];
+    ? [["profiles", "Profiles"], ["marriages", "Marriages"], ["payments", "Payments"], ["agents", "Agents"], ["agentForm", "Create Agent"], ["stories", "Stories"]]
+    : [["profiles", "My Clients"], ["marriages", "Marriages"], ["payments", "Payments"]];
   tabs.innerHTML = "";
   items.forEach(([key, label]) => {
     const button = document.createElement("button");
@@ -338,11 +344,13 @@ function renderTabs() {
 }
 
 function renderDashboard() {
-  const visibleProfiles = state.profiles;
-  const filteredProfiles = filterDashboardProfiles(visibleProfiles);
-  $("#dashTotal").textContent = visibleProfiles.length;
-  $("#dashPending").textContent = visibleProfiles.filter((profile) => profile.status === "pending").length;
-  $("#dashVerified").textContent = visibleProfiles.filter((profile) => profile.status === "verified").length;
+  const activeProfiles = activeClientProfiles();
+  const filteredProfiles = filterDashboardProfiles(activeProfiles);
+  $("#dashTotal").textContent = activeProfiles.length;
+  $("#dashPending").textContent = activeProfiles.filter((profile) => profile.status === "pending").length;
+  $("#dashVerified").textContent = activeProfiles.filter((profile) => profile.status === "verified").length;
+  if ($("#dashMarriages")) $("#dashMarriages").textContent = completedMarriageProfiles().length;
+  if ($("#dashMonthMarriages")) $("#dashMonthMarriages").textContent = marriageCountThisMonth();
   if ($("#dashAgents")) $("#dashAgents").textContent = state.session.role === "admin" ? state.agents.length : "-";
 
   const filterPanel = $("#dashboardFilter");
@@ -352,7 +360,7 @@ function renderDashboard() {
     filterPanel.classList.toggle("hidden", !showFilter);
     $("#dashboardSearch").value = state.dashboardSearch || "";
     $("#dashboardSearchCount").textContent = showFilter
-      ? `${filteredProfiles.length} / ${visibleProfiles.length} client`
+      ? `${filteredProfiles.length} / ${activeProfiles.length} active client`
       : "";
   }
 
@@ -360,6 +368,8 @@ function renderDashboard() {
 
   if (state.activeTab === "payments") {
     renderPaymentTable();
+  } else if (state.activeTab === "marriages") {
+    renderMarriageTable();
   } else if (state.activeTab === "agents" && state.session.role === "admin") {
     renderAgentTable();
   } else if (state.activeTab === "agentForm" && state.session.role === "admin") {
@@ -371,10 +381,26 @@ function renderDashboard() {
   }
 }
 
+function activeClientProfiles() {
+  return cleanProfiles(state.profiles).filter((profile) => String(profile.marriageStatus || "").toLowerCase() !== "completed");
+}
+
+function completedMarriageProfiles() {
+  return cleanProfiles(state.profiles).filter((profile) => String(profile.marriageStatus || "").toLowerCase() === "completed");
+}
+
+function marriageCountThisMonth() {
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return completedMarriageProfiles().filter((profile) => String(profile.marriageDate || "").startsWith(monthKey)).length;
+}
+
 function filterDashboardProfiles(list) {
   const query = normalize(state.dashboardSearch || "");
-  if (!query) return cleanProfiles(list);
-  return cleanProfiles(list).filter((profile) => {
+  const allowedIds = new Set(cleanProfiles(list).map((profile) => String(profile.id || "")));
+  const activeProfiles = activeClientProfiles().filter((profile) => allowedIds.has(String(profile.id || "")));
+  if (!query) return activeProfiles;
+  return activeProfiles.filter((profile) => {
     const haystack = [
       profile.id,
       profile.fullName,
@@ -458,7 +484,8 @@ function cleanStories(list) {
   );
 }
 function renderProfileTable(list) {
-  list = cleanProfiles(list);
+  const allowedIds = new Set(cleanProfiles(list).map((profile) => String(profile.id || "")));
+  list = activeClientProfiles().filter((profile) => allowedIds.has(String(profile.id || "")));
   $("#tableHead").innerHTML = `<tr><th>ID</th><th>ছবি</th><th>নাম</th><th>যোগাযোগ</th><th>ঠিকানা</th><th>স্ট্যাটাস</th><th>এজেন্ট</th><th>কাজ</th></tr>`;
   const body = $("#tableBody");
   body.innerHTML = "";
@@ -478,15 +505,37 @@ function renderProfileTable(list) {
       <td>${escapeHtml(profile.agentId || "Public")}</td>
       <td><div class="row-actions"></div></td>`;
     const actions = tr.querySelector(".row-actions");
-    addAction(actions, "View", "btn-blue", () => openDetails(profile));
-    addAction(actions, "Edit", "btn-gold", () => openProfileForm(profile));
-    addAction(actions, "Payment", "btn-green", () => openPaymentModal(profile));
+    addAction(actions, state.session.role === "admin" ? "Admin View" : "Agent View", "btn-blue", () => openDetails(profile));
     if (state.session.role === "admin") {
       addAction(actions, profile.status === "verified" ? "Pending" : "Approve", "btn-green", () => setProfileStatus(profile, profile.status === "verified" ? "pending" : "verified"));
-    }
-    if (state.session.role === "admin") {
       addAction(actions, "Delete", "btn-danger", () => deleteProfile(profile));
     }
+    body.appendChild(tr);
+  });
+}
+
+function renderMarriageTable() {
+  const marriages = completedMarriageProfiles();
+  $("#tableHead").innerHTML = `<tr><th>Client ID</th><th>Client</th><th>Marriage Date</th><th>Married With</th><th>Agent</th><th>Note</th><th>Actions</th></tr>`;
+  const body = $("#tableBody");
+  body.innerHTML = "";
+  if (!marriages.length) {
+    body.innerHTML = `<tr><td colspan="7">No completed marriage records yet.</td></tr>`;
+    return;
+  }
+  marriages.forEach((profile) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(profile.id || "")}</td>
+      <td><strong>${escapeHtml(profile.fullName || "")}</strong><br><span class="note">${escapeHtml(profile.phone || "")}</span></td>
+      <td>${escapeHtml(formatDate(profile.marriageDate) || profile.marriageDate || "")}</td>
+      <td>${escapeHtml(profile.marriedWithName || "")}<br><span class="note">${escapeHtml(profile.marriedWithProfileId || "")}</span></td>
+      <td>${escapeHtml(profile.agentId || "Public")}</td>
+      <td>${escapeHtml(profile.marriageNote || "")}</td>
+      <td><div class="row-actions"></div></td>`;
+    const actions = tr.querySelector(".row-actions");
+    addAction(actions, "View", "btn-blue", () => openDetails(profile));
+    if (state.session.role === "admin") addAction(actions, "Update", "btn-gold", () => openMarriageModal(profile));
     body.appendChild(tr);
   });
 }
@@ -557,6 +606,78 @@ function cleanProfiles(list) {
     String(profile?.fullName || "").trim() ||
     String(profile?.phone || "").trim()
   );
+}
+
+function openProfileNoteModal(profile, noteType) {
+  activeNoteContext = { profile, noteType };
+  const isRequirement = noteType === "requirement";
+  $("#profileNoteTitle").textContent = isRequirement ? "Client Requirement" : "Field Verification Remark";
+  $("#profileNoteClient").textContent = `${profile.fullName || "Client"} (${profile.id || ""})`;
+  $("#profileNoteText").value = isRequirement ? (profile.specialRequirement || "") : (profile.verificationRemark || "");
+  $("#profileNoteHelp").textContent = isRequirement
+    ? "Agent/Admin client-er special requirement ekhane likhte parbe."
+    : "Client data thik na bhul, field verified remark/review ekhane likhun.";
+  openModal("profileNoteModal");
+}
+
+async function submitProfileNote(event) {
+  event.preventDefault();
+  if (!activeNoteContext?.profile) return toast("Profile note missing");
+  const button = event.target.querySelector("button[type='submit']");
+  button.disabled = true;
+  button.textContent = "Saving...";
+  try {
+    const result = await api("saveProfileNote", {
+      token: state.session.token,
+      id: activeNoteContext.profile.id,
+      noteType: activeNoteContext.noteType,
+      note: $("#profileNoteText").value || ""
+    });
+    if (!result.ok) throw new Error(result.error || "Note save failed");
+    closeModals();
+    toast("Note saved");
+    await loadDashboardData();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save Note";
+  }
+}
+
+function openMarriageModal(profile) {
+  activeMarriageProfile = profile;
+  $("#marriageClient").textContent = `${profile.fullName || "Client"} (${profile.id || ""})`;
+  const form = $("#marriageForm");
+  form.reset();
+  form.elements.marriageDate.value = formatDate(profile.marriageDate) || new Date().toISOString().slice(0, 10);
+  form.elements.marriedWithProfileId.value = profile.marriedWithProfileId || "";
+  form.elements.marriedWithName.value = profile.marriedWithName || "";
+  form.elements.marriageNote.value = profile.marriageNote || "";
+  openModal("marriageModal");
+}
+
+async function submitMarriageComplete(event) {
+  event.preventDefault();
+  if (!activeMarriageProfile?.id) return toast("Profile missing");
+  const button = event.target.querySelector("button[type='submit']");
+  button.disabled = true;
+  button.textContent = "Saving...";
+  try {
+    const payload = Object.fromEntries(new FormData(event.target).entries());
+    const result = await api("completeMarriage", { ...payload, token: state.session.token, id: activeMarriageProfile.id });
+    if (!result.ok) throw new Error(result.error || "Marriage complete failed");
+    closeModals();
+    toast("Marriage completed");
+    state.activeTab = "marriages";
+    await loadDashboardData();
+    renderTabs();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save Marriage";
+  }
 }
 
 function cleanAgents(list) {
@@ -918,6 +1039,16 @@ function openDetails(profile) {
     ["নিজের সম্পর্কে", profile.about], ["মোবাইল", profile.phone], ["ইমেল", profile.email],
     ["ডকুমেন্ট টাইপ", profile.documentType], ["ডকুমেন্ট", profile.document]
   ];
+  if (isLoggedIn) {
+    privateFields.push(
+      ["স্পেশাল রিকোয়ারমেন্ট", profile.specialRequirement],
+      ["ফিল্ড ভেরিফিকেশন রিমার্ক", profile.verificationRemark],
+      ["ম্যারেজ স্ট্যাটাস", profile.marriageStatus],
+      ["বিয়ের তারিখ", profile.marriageDate],
+      ["যার সাথে বিয়ে", [profile.marriedWithName, profile.marriedWithProfileId].filter(Boolean).join(" - ")],
+      ["ম্যারেজ নোট", profile.marriageNote]
+    );
+  }
   const fields = isLoggedIn ? privateFields : publicFields;
   const paymentPanel = isLoggedIn ? `
     <div class="detail-payment-panel">
@@ -947,7 +1078,18 @@ function openDetails(profile) {
       </div>
     </div>
     ${paymentPanel}
+    ${isLoggedIn ? `<div class="row-actions detail-actions"></div>` : ""}
     <div class="detail-list upgraded">${fields.map(([label, value]) => `<p><strong>${escapeHtml(label)}</strong>${formatDetailValue(value)}</p>`).join("")}</div>`;
+  const detailActions = $(".detail-actions", $("#detailBody"));
+  if (detailActions) {
+    addAction(detailActions, "Edit", "btn-gold", () => openProfileForm(profile));
+    addAction(detailActions, "Payment", "btn-green", () => openPaymentModal(profile));
+    addAction(detailActions, "Requirement", "btn-blue", () => openProfileNoteModal(profile, "requirement"));
+    addAction(detailActions, "Verify Note", "btn-gold", () => openProfileNoteModal(profile, "verification"));
+    if (state.session.role === "admin" && String(profile.marriageStatus || "").toLowerCase() !== "completed") {
+      addAction(detailActions, "Marriage Complete", "btn-green", () => openMarriageModal(profile));
+    }
+  }
   openModal("detailModal");
 }
 function formatDetailValue(value) {
@@ -1028,6 +1170,8 @@ function normalizeMessage(message) {
     "Agent deleted": ["Agent ডিলিট হয়েছে", "Agent account list থেকে সরানো হয়েছে।"],
     "Story saved": ["Story সেভ হয়েছে", "Success story homepage-এর জন্য সেভ করা হয়েছে।"],
     "Story deleted": ["Story ডিলিট হয়েছে", "Success story list থেকে সরানো হয়েছে।"],
+    "Note saved": ["নোট সেভ হয়েছে", "Client requirement / verification remark সফলভাবে সেভ হয়েছে।"],
+    "Marriage completed": ["ম্যারেজ সম্পন্ন হিসেবে সেভ হয়েছে", "Client data delete না করে admin marriage record-এ রাখা হয়েছে।"],
     "Added to shortlist": ["Shortlist-এ যোগ হয়েছে", "এই profile shortlist-এ রাখা হয়েছে।"]
   };
   if (successMap[raw]) {
@@ -1310,15 +1454,13 @@ function openPaymentModal(profile) {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./service-worker.js")
-      .then(() => console.log("Service Worker Registered"))
+      .then((registration) => {
+        registration.update();
+        console.log("Service Worker Registered");
+      })
       .catch(err => console.log(err));
   });
 }
-
-
-
-
-
 
 
 

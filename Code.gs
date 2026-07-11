@@ -16,7 +16,10 @@ const PROFILE_HEADERS = [
   'fatherProfession', 'motherProfession', 'income', 'homeType', 'childOrder',
   'brothersCount', 'sistersCount', 'lifeWish', 'addressLine', 'villageTown', 'postOffice', 'policestation',
   'district', 'state', 'pin', 'email', 'phone', 'diet', 'prefComplexion', 'prefEducationLevel',
-  'prefAgeRange', 'prefHeight', 'prefLivelihood', 'prefIncomeType', 'about', 'photo', 'documentType', 'document'
+  'prefAgeRange', 'prefHeight', 'prefLivelihood', 'prefIncomeType', 'about', 'photo', 'documentType', 'document',
+  'specialRequirement', 'requirementUpdatedAt', 'requirementUpdatedBy',
+  'verificationRemark', 'verificationUpdatedAt', 'verificationUpdatedBy',
+  'marriageStatus', 'marriageDate', 'marriedWithProfileId', 'marriedWithName', 'marriageNote', 'marriageCompletedAt', 'marriageCompletedBy'
 ];
 
 const AGENT_HEADERS = [
@@ -72,6 +75,8 @@ function doPost(e) {
     if (action === 'createProfile') return createProfile_(data);
     if (action === 'editProfile') return editProfile_(data);
     if (action === 'setProfileStatus') return setProfileStatus_(data);
+    if (action === 'saveProfileNote') return saveProfileNote_(data);
+    if (action === 'completeMarriage') return completeMarriage_(data);
     if (action === 'deleteProfile') return deleteProfile_(data);
     if (action === 'saveAgent') return saveAgent_(data);
     if (action === 'deleteAgent') return deleteAgent_(data);
@@ -200,6 +205,53 @@ function setProfileStatus_(data) {
   const sheet = getSheet_(PROFILE_SHEET, PROFILE_HEADERS);
   const found = findById_(sheet, data.id);
   setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'status', data.status || 'pending');
+  return json_({ ok: true });
+}
+
+function saveProfileNote_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin' && session.role !== 'agent') throw new Error('Login required');
+
+  const sheet = getSheet_(PROFILE_SHEET, PROFILE_HEADERS);
+  const found = findById_(sheet, data.id);
+  if (session.role === 'agent' && !canAgentManageProfile_(session, found.item)) {
+    throw new Error('Agent can update only their own client data');
+  }
+
+  const type = String(data.noteType || '').trim();
+  const now = new Date();
+  const updatedBy = session.name || session.role;
+  if (type === 'requirement') {
+    setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'specialRequirement', data.note || '');
+    setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'requirementUpdatedAt', now);
+    setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'requirementUpdatedBy', updatedBy);
+  } else if (type === 'verification') {
+    setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'verificationRemark', data.note || '');
+    setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'verificationUpdatedAt', now);
+    setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'verificationUpdatedBy', updatedBy);
+  } else {
+    throw new Error('Unknown note type');
+  }
+
+  return json_({ ok: true });
+}
+
+function completeMarriage_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can complete marriage records');
+
+  const sheet = getSheet_(PROFILE_SHEET, PROFILE_HEADERS);
+  const found = findById_(sheet, data.id);
+  const marriageDate = data.marriageDate || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
+  setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'marriageStatus', 'completed');
+  setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'marriageDate', marriageDate);
+  setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'marriedWithProfileId', data.marriedWithProfileId || '');
+  setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'marriedWithName', data.marriedWithName || '');
+  setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'marriageNote', data.marriageNote || '');
+  setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'marriageCompletedAt', new Date());
+  setCellByHeader_(sheet, found.row, PROFILE_HEADERS, 'marriageCompletedBy', session.name || 'Admin');
+
   return json_({ ok: true });
 }
 
