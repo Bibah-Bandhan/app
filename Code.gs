@@ -7,6 +7,7 @@ const PROFILE_SHEET = 'Profiles';
 const AGENT_SHEET = 'Agents';
 const SESSION_SHEET = 'Sessions';
 const PAYMENT_SHEET = 'Payments';
+const AGENT_PAYOUT_SHEET = 'AgentPayouts';
 const STORY_SHEET = 'Stories';
 
 const PROFILE_HEADERS = [
@@ -23,11 +24,21 @@ const PROFILE_HEADERS = [
 ];
 
 const AGENT_HEADERS = [
-  'id', 'timestamp', 'status', 'name', 'phone', 'email', 'area', 'password', 'passwordHash'
+  'id', 'timestamp', 'status', 'level', 'name', 'gender', 'dob',
+  'houseNo', 'villageTown', 'postOffice', 'policeStation', 'district', 'state', 'pinCode',
+  'phone', 'whatsapp', 'email', 'aadhaar',
+  'bankName', 'ifscCode', 'accountNumber', 'accountHolderName', 'upiId',
+  'area',
+  'photo', 'aadhaarDoc', 'bankDoc', 'regCommission', 'marriageCommission',
+  'password', 'passwordHash'
+];
+
+const AGENT_PAYOUT_HEADERS = [
+  'payoutId', 'timestamp', 'agentId', 'agentName', 'amount', 'payoutDate', 'mode', 'purpose', 'note', 'paidByRole', 'paidByName'
 ];
 
 const SESSION_HEADERS = [
-  'token', 'timestamp', 'role', 'name', 'agentId'
+  'token', 'timestamp', 'role', 'name', 'agentId', 'level', 'regCommission', 'marriageCommission'
 ];
 
 const PAYMENT_HEADERS = [
@@ -43,11 +54,11 @@ function doGet(e) {
     const view = (e && e.parameter && e.parameter.view) || 'public';
     setupSheets_();
     if (view === 'setup') {
-      return json_({ ok: true, message: 'Sheets are ready', tabs: [PROFILE_SHEET, AGENT_SHEET, SESSION_SHEET, PAYMENT_SHEET, STORY_SHEET] });
+      return json_({ ok: true, message: 'Sheets are ready', tabs: [PROFILE_SHEET, AGENT_SHEET, SESSION_SHEET, PAYMENT_SHEET, AGENT_PAYOUT_SHEET, STORY_SHEET] });
     }
 
     const profiles = readSheet_(PROFILE_SHEET, PROFILE_HEADERS);
-    const agents = readSheet_(AGENT_SHEET, AGENT_HEADERS).map(safeAgent_);
+    const agents = readSheet_(AGENT_SHEET, AGENT_HEADERS).map(item => safeAgent_(item, false));
     const stories = readSheet_(STORY_SHEET, STORY_HEADERS);
 
     if (view === 'public') {
@@ -79,6 +90,11 @@ function doPost(e) {
     if (action === 'completeMarriage') return completeMarriage_(data);
     if (action === 'deleteProfile') return deleteProfile_(data);
     if (action === 'saveAgent') return saveAgent_(data);
+    if (action === 'registerAgent') return registerAgent_(data);
+    if (action === 'approveAgent') return approveAgent_(data);
+    if (action === 'resetAgentPassword') return resetAgentPassword_(data);
+    if (action === 'updateAgentSelf') return updateAgentSelf_(data);
+    if (action === 'saveAgentPayout') return saveAgentPayout_(data);
     if (action === 'deleteAgent') return deleteAgent_(data);
     if (action === 'savePayment') return savePayment_(data);
     if (action === 'saveStory') return saveStory_(data);
@@ -114,7 +130,14 @@ function login_(data) {
     return json_({ ok: false, error: 'Invalid or blocked agent login' });
   }
 
-  const session = createSession_({ role: 'agent', name: agent.name, agentId: agent.id });
+  const session = createSession_({
+    role: 'agent',
+    name: agent.name,
+    agentId: agent.id,
+    level: agent.level || 'Standard',
+    regCommission: agent.regCommission || '30',
+    marriageCommission: agent.marriageCommission || '25'
+  });
   return json_({ ok: true, session: session });
 }
 
@@ -122,16 +145,30 @@ function dashboard_(data) {
   const session = requireSession_(data.token);
   let profiles = readSheet_(PROFILE_SHEET, PROFILE_HEADERS);
   let payments = readSheet_(PAYMENT_SHEET, PAYMENT_HEADERS);
+  let agentPayouts = readSheet_(AGENT_PAYOUT_SHEET, AGENT_PAYOUT_HEADERS);
   const stories = readSheet_(STORY_SHEET, STORY_HEADERS);
-  const agents = readSheet_(AGENT_SHEET, AGENT_HEADERS).map(safeAgent_);
+  const agents = readSheet_(AGENT_SHEET, AGENT_HEADERS).map(item => safeAgent_(item, session.role === 'admin'));
 
   if (session.role === 'agent') {
     profiles = profiles.filter(profile => canAgentManageProfile_(session, profile));
     const allowedIds = profiles.map(profile => String(profile.id || ''));
     payments = payments.filter(payment => allowedIds.includes(String(payment.profileId || '')));
+    agentPayouts = agentPayouts.filter(payout => String(payout.agentId || '') === String(session.agentId || ''));
   }
 
-  return json_({ ok: true, profiles: profiles, agents: session.role === 'admin' ? agents : [], payments: payments, stories: session.role === 'admin' ? stories : [] });
+  const currentAgent = session.role === 'agent'
+    ? agents.find(agent => String(agent.id || '') === String(session.agentId || '')) || null
+    : null;
+
+  return json_({
+    ok: true,
+    profiles: profiles,
+    agents: session.role === 'admin' ? agents : [],
+    payments: payments,
+    agentPayouts: agentPayouts,
+    currentAgent: currentAgent,
+    stories: session.role === 'admin' ? stories : []
+  });
 }
 
 function saveStory_(data) {
@@ -281,34 +318,180 @@ function saveAgent_(data) {
     throw new Error('Phone or email is already used by another agent');
   }
 
-  const agent = {};
-  AGENT_HEADERS.forEach(header => agent[header] = data[header] || '');
-  if (matched) {
-    agent.id = matched.item.id;
-    agent.timestamp = matched.item.timestamp || new Date();
-  } else {
-    agent.id = agent.id || ('AG' + Date.now().toString().slice(-8));
-    agent.timestamp = agent.timestamp || new Date();
-  }
-  agent.status = agent.status || 'active';
-
-  if (data.password) {
-    agent.password = data.password;
-    agent.passwordHash = hash_(data.password);
-  } else if (matched) {
-    agent.password = matched.item.password || '';
-    agent.passwordHash = matched.item.passwordHash || '';
-  }
-
-  if (!agent.passwordHash) throw new Error('Password is required for new agent');
-
+  const agent = normalizeAgent_(data, matched ? matched.item : null);
   if (matched) {
     updateRow_(sheet, matched.row, AGENT_HEADERS, agent);
   } else {
     appendObject_(sheet, AGENT_HEADERS, agent);
   }
 
-  return json_({ ok: true, agent: safeAgent_(agent) });
+  return json_({ ok: true, agent: safeAgent_(agent, true) });
+}
+
+function registerAgent_(data) {
+  const sheet = getSheet_(AGENT_SHEET, AGENT_HEADERS);
+  const existingByContact = findAgentByContact_(sheet, data.phone, data.email);
+  if (existingByContact) throw new Error('Phone or email is already registered');
+
+  const agent = normalizeAgent_(data, null);
+  agent.status = 'pending';
+  appendObject_(sheet, AGENT_HEADERS, agent);
+  return json_({ ok: true, id: agent.id, message: 'Agent registration submitted. Admin will approve your account.' });
+}
+
+function approveAgent_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can approve agents');
+
+  const sheet = getSheet_(AGENT_SHEET, AGENT_HEADERS);
+  const found = findById_(sheet, data.id);
+  const status = String(data.status || 'active').trim();
+  setCellByHeader_(sheet, found.row, AGENT_HEADERS, 'status', status);
+  if (data.level) setCellByHeader_(sheet, found.row, AGENT_HEADERS, 'level', data.level);
+  return json_({ ok: true });
+}
+
+function resetAgentPassword_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can reset agent password');
+
+  const password = String(data.password || '').trim();
+  if (!password) throw new Error('New password is required');
+
+  const sheet = getSheet_(AGENT_SHEET, AGENT_HEADERS);
+  const found = findById_(sheet, data.id);
+  setCellByHeader_(sheet, found.row, AGENT_HEADERS, 'password', password);
+  setCellByHeader_(sheet, found.row, AGENT_HEADERS, 'passwordHash', hash_(password));
+  return json_({ ok: true, password: password });
+}
+
+function updateAgentSelf_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'agent') throw new Error('Only agents can update their own profile');
+
+  const sheet = getSheet_(AGENT_SHEET, AGENT_HEADERS);
+  const found = findById_(sheet, session.agentId);
+  const agent = Object.assign({}, found.item);
+
+  const editableFields = [
+    'name', 'gender', 'dob',
+    'houseNo', 'villageTown', 'postOffice', 'policeStation', 'district', 'state', 'pinCode',
+    'phone', 'whatsapp', 'email', 'aadhaar',
+    'bankName', 'ifscCode', 'accountNumber', 'accountHolderName', 'upiId', 'area'
+  ];
+  editableFields.forEach(field => {
+    if (data[field] !== undefined) agent[field] = data[field];
+  });
+
+  agent.phone = String(agent.phone || '').replace(/\D/g, '');
+  agent.whatsapp = String(agent.whatsapp || '').replace(/\D/g, '');
+  agent.pinCode = String(agent.pinCode || '').replace(/\D/g, '').slice(0, 6);
+  agent.ifscCode = String(agent.ifscCode || '').trim().toUpperCase();
+  agent.accountNumber = String(agent.accountNumber || '').replace(/\s/g, '');
+
+  if (data.photo && String(data.photo).startsWith('data:image/')) {
+    agent.photo = saveAgentFile_(data.photo, agent.id, agent.name, 'photo');
+  }
+  if (data.aadhaarDoc && String(data.aadhaarDoc).startsWith('data:')) {
+    agent.aadhaarDoc = saveAgentFile_(data.aadhaarDoc, agent.id, agent.name, 'aadhaar');
+  }
+  if (data.bankDoc && String(data.bankDoc).startsWith('data:')) {
+    agent.bankDoc = saveAgentFile_(data.bankDoc, agent.id, agent.name, 'bank');
+  }
+
+  const newPassword = String(data.newPassword || '').trim();
+  if (newPassword) {
+    const currentPassword = String(data.currentPassword || '');
+    if (hash_(currentPassword) !== found.item.passwordHash) {
+      throw new Error('Current password is incorrect');
+    }
+    agent.password = newPassword;
+    agent.passwordHash = hash_(newPassword);
+  }
+
+  updateRow_(sheet, found.row, AGENT_HEADERS, agent);
+  return json_({ ok: true, agent: safeAgent_(agent, false) });
+}
+
+function saveAgentPayout_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can record agent payouts');
+
+  const amount = Number(data.amount || 0);
+  if (!amount || amount <= 0) throw new Error('Valid payout amount is required');
+
+  const agentSheet = getSheet_(AGENT_SHEET, AGENT_HEADERS);
+  const found = findById_(agentSheet, data.agentId);
+
+  const payout = {};
+  AGENT_PAYOUT_HEADERS.forEach(header => payout[header] = data[header] || '');
+  payout.payoutId = payout.payoutId || ('APY' + Date.now().toString().slice(-9));
+  payout.timestamp = new Date();
+  payout.agentId = found.item.id;
+  payout.agentName = found.item.name || '';
+  payout.amount = amount;
+  payout.payoutDate = data.payoutDate || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  payout.mode = data.mode || 'Cash';
+  payout.purpose = data.purpose || 'Registration';
+  payout.paidByRole = session.role;
+  payout.paidByName = session.name || session.role;
+
+  const sheet = getSheet_(AGENT_PAYOUT_SHEET, AGENT_PAYOUT_HEADERS);
+  appendObject_(sheet, AGENT_PAYOUT_HEADERS, payout);
+  return json_({ ok: true, payout: payout });
+}
+
+function normalizeAgent_(data, existing) {
+  const agent = {};
+  AGENT_HEADERS.forEach(header => agent[header] = data[header] !== undefined ? data[header] : (existing ? existing[header] || '' : ''));
+
+  if (existing) {
+    agent.id = existing.id;
+    agent.timestamp = existing.timestamp || new Date();
+  } else {
+    agent.id = agent.id || ('AG' + Date.now().toString().slice(-8));
+    agent.timestamp = agent.timestamp || new Date();
+  }
+
+  agent.status = agent.status || (existing ? existing.status : 'active');
+  agent.level = agent.level || 'Standard';
+  agent.regCommission = agent.regCommission || '30';
+  agent.marriageCommission = agent.marriageCommission || '25';
+  agent.phone = String(agent.phone || '').replace(/\D/g, '');
+  agent.whatsapp = String(agent.whatsapp || '').replace(/\D/g, '');
+  agent.pinCode = String(agent.pinCode || '').replace(/\D/g, '').slice(0, 6);
+  agent.ifscCode = String(agent.ifscCode || '').trim().toUpperCase();
+  agent.accountNumber = String(agent.accountNumber || '').replace(/\s/g, '');
+
+  if (data.password) {
+    agent.password = data.password;
+    agent.passwordHash = hash_(data.password);
+  } else if (existing) {
+    agent.password = existing.password || '';
+    agent.passwordHash = existing.passwordHash || '';
+  }
+
+  if (!agent.passwordHash) throw new Error('Password is required for new agent');
+
+  if (data.photo && String(data.photo).startsWith('data:image/')) {
+    agent.photo = saveAgentFile_(data.photo, agent.id, agent.name, 'photo');
+  } else if (existing && !agent.photo) {
+    agent.photo = existing.photo || '';
+  }
+
+  if (data.aadhaarDoc && String(data.aadhaarDoc).startsWith('data:')) {
+    agent.aadhaarDoc = saveAgentFile_(data.aadhaarDoc, agent.id, agent.name, 'aadhaar');
+  } else if (existing && !agent.aadhaarDoc) {
+    agent.aadhaarDoc = existing.aadhaarDoc || '';
+  }
+
+  if (data.bankDoc && String(data.bankDoc).startsWith('data:')) {
+    agent.bankDoc = saveAgentFile_(data.bankDoc, agent.id, agent.name, 'bank');
+  } else if (existing && !agent.bankDoc) {
+    agent.bankDoc = existing.bankDoc || '';
+  }
+
+  return agent;
 }
 
 function deleteAgent_(data) {
@@ -436,12 +619,13 @@ function setupSheets_() {
   getSheet_(AGENT_SHEET, AGENT_HEADERS);
   getSheet_(SESSION_SHEET, SESSION_HEADERS);
   getSheet_(PAYMENT_SHEET, PAYMENT_HEADERS);
+  getSheet_(AGENT_PAYOUT_SHEET, AGENT_PAYOUT_HEADERS);
   getSheet_(STORY_SHEET, STORY_HEADERS);
 }
 
 function setupSheets() {
   setupSheets_();
-  return 'Profiles, Agents, Sessions, Payments, Stories tabs are ready.';
+  return 'Profiles, Agents, Sessions, Payments, AgentPayouts, Stories tabs are ready.';
 }
 
 function readSheet_(name, headers) {
@@ -479,6 +663,9 @@ function isMeaningfulRow_(sheetName, item) {
   }
   if (sheetName === PAYMENT_SHEET) {
     return Boolean(String(item.paymentId || '').trim() || String(item.profileId || '').trim() || String(item.amount || '').trim());
+  }
+  if (sheetName === AGENT_PAYOUT_SHEET) {
+    return Boolean(String(item.payoutId || '').trim() || String(item.agentId || '').trim() || String(item.amount || '').trim());
   }
   if (sheetName === STORY_SHEET) {
     return Boolean(String(item.id || '').trim() || String(item.coupleName || '').trim() || String(item.story || '').trim());
@@ -572,7 +759,10 @@ function createSession_(session) {
     timestamp: new Date(),
     role: session.role,
     name: session.name,
-    agentId: session.agentId || ''
+    agentId: session.agentId || '',
+    level: session.level || '',
+    regCommission: session.regCommission || '30',
+    marriageCommission: session.marriageCommission || '25'
   };
   appendObject_(sheet, SESSION_HEADERS, payload);
   return payload;
@@ -586,17 +776,65 @@ function requireSession_(token) {
   return session;
 }
 
-function safeAgent_(agent) {
-  return {
+function safeAgent_(agent, includePassword) {
+  const safe = {
     id: agent.id || '',
     timestamp: agent.timestamp || '',
     status: agent.status || 'active',
+    level: agent.level || 'Standard',
     name: agent.name || '',
+    gender: agent.gender || '',
+    dob: agent.dob || '',
+    houseNo: agent.houseNo || '',
+    villageTown: agent.villageTown || '',
+    postOffice: agent.postOffice || '',
+    policeStation: agent.policeStation || '',
+    district: agent.district || '',
+    state: agent.state || '',
+    pinCode: agent.pinCode || '',
+    address: formatAgentAddress_(agent),
     phone: agent.phone || '',
+    whatsapp: agent.whatsapp || '',
     email: agent.email || '',
+    aadhaar: agent.aadhaar || '',
+    bankName: agent.bankName || '',
+    ifscCode: agent.ifscCode || '',
+    accountNumber: agent.accountNumber || '',
+    accountHolderName: agent.accountHolderName || '',
+    bankDetails: formatAgentBank_(agent),
+    upiId: agent.upiId || '',
     area: agent.area || '',
-    password: agent.password || ''
+    photo: agent.photo || '',
+    aadhaarDoc: agent.aadhaarDoc || '',
+    bankDoc: agent.bankDoc || '',
+    regCommission: agent.regCommission || '30',
+    marriageCommission: agent.marriageCommission || '25'
   };
+  if (includePassword) safe.password = agent.password || '';
+  return safe;
+}
+
+function formatAgentAddress_(agent) {
+  const parts = [
+    agent.houseNo, agent.villageTown, agent.postOffice, agent.policeStation,
+    agent.district, agent.state, agent.pinCode
+  ].filter(function(part) { return String(part || '').trim() !== ''; });
+  if (parts.length) return parts.join(', ');
+  return String(agent.address || '').trim();
+}
+
+function formatAgentBank_(agent) {
+  const parts = [];
+  if (agent.bankName) parts.push(String(agent.bankName));
+  if (agent.ifscCode) parts.push('IFSC: ' + String(agent.ifscCode));
+  if (agent.accountNumber) parts.push('A/C: ' + String(agent.accountNumber));
+  if (agent.accountHolderName) parts.push(String(agent.accountHolderName));
+  if (parts.length) return parts.join(' | ');
+  return String(agent.bankDetails || '').trim();
+}
+
+function saveAgentFile_(dataUrl, id, fullName, type) {
+  return saveProfileFile_(dataUrl, id, fullName, type);
 }
 
 function saveProfileFile_(dataUrl, id, fullName, type) {

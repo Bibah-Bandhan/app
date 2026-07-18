@@ -1,20 +1,61 @@
-﻿const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwTbo6hm2CrEH6ykavIkX6yttDDc129kwr4mwIMMUbYmiPWHg89osLXGP-rjJJJFUBRXQ/exec";
+﻿const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyoGSVz24Cj73t--_LS8mjqJP8B6SAYg8_dJCaNkBbqB91Zqynoj1kkRba5Jh9ndtA4Q/exec";
 
 const state = {
   profiles: [],
   agents: [],
   payments: [],
+  agentPayouts: [],
   stories: [],
   filtered: [],
   session: null,
+  currentAgent: null,
   activeTab: "profiles",
   dashboardSearch: "",
   croppedPhotoDataUrl: "",
+  activeAgentDetail: null,
   crop: { img: null, imageUrl: "", zoom: 1, minZoom: 1, offsetX: 0, offsetY: 0, dragging: false, startX: 0, startY: 0, baseX: 0, baseY: 0 },
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+const AGENT_ADDRESS_FIELDS = ["houseNo", "villageTown", "postOffice", "policeStation", "district", "state", "pinCode"];
+const AGENT_BANK_FIELDS = ["bankName", "ifscCode", "accountNumber", "accountHolderName", "upiId"];
+
+function formatAgentAddress(agent = {}) {
+  const parts = AGENT_ADDRESS_FIELDS.map((key) => agent[key]).filter(Boolean);
+  if (parts.length) return parts.join(", ");
+  return agent.address || "";
+}
+
+function formatAgentBank(agent = {}) {
+  const segments = [];
+  if (agent.bankName) segments.push(agent.bankName);
+  if (agent.ifscCode) segments.push(`IFSC: ${agent.ifscCode}`);
+  if (agent.accountNumber) segments.push(`A/C: ${agent.accountNumber}`);
+  if (agent.accountHolderName) segments.push(agent.accountHolderName);
+  if (segments.length) return segments.join(" | ");
+  return agent.bankDetails || "";
+}
+
+function hydrateLegacyAgent(agent = {}) {
+  const hydrated = { ...agent };
+  if (!AGENT_ADDRESS_FIELDS.some((key) => hydrated[key]) && agent.address) {
+    hydrated.villageTown = agent.address;
+  }
+  if (!agent.bankName && !agent.accountNumber && agent.bankDetails) {
+    hydrated.accountHolderName = agent.bankDetails;
+  }
+  return hydrated;
+}
+
+function normalizeAgentPayload(payload = {}) {
+  const data = { ...payload };
+  if (data.pinCode) data.pinCode = String(data.pinCode).replace(/\D/g, "").slice(0, 6);
+  if (data.ifscCode) data.ifscCode = String(data.ifscCode).trim().toUpperCase();
+  if (data.accountNumber) data.accountNumber = String(data.accountNumber).replace(/\s/g, "");
+  return data;
+}
 
 const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000;
 let inactivityTimer = null;
@@ -109,6 +150,8 @@ function bindUi() {
       openLogin(button.dataset.openLogin || "agent");
     });
   });
+  $("#showAgentSignupBtn")?.addEventListener("click", () => showAgentSignupView());
+  $("#backToAgentLoginBtn")?.addEventListener("click", () => showAgentLoginView());
   $$("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModals));
   $$("[data-close-message]").forEach((button) => button.addEventListener("click", closeMessageModal));
   $$(".modal").forEach((modal) => {
@@ -138,7 +181,18 @@ function bindUi() {
   $("#loginForm").addEventListener("submit", submitLogin);
   $("#profileForm").addEventListener("submit", submitProfile);
   $("#agentForm").addEventListener("submit", submitAgent);
-  $("#clearAgentForm").addEventListener("click", () => $("#agentForm").reset());
+  $("#clearAgentForm").addEventListener("click", () => { $("#agentForm").reset(); clearAgentFileInputs(); });
+  if ($("#agentRegisterForm")) $("#agentRegisterForm").addEventListener("submit", submitAgentRegister);
+  if ($("#myAccountForm")) $("#myAccountForm").addEventListener("submit", submitMyAccount);
+  if ($("#agentPayoutForm")) $("#agentPayoutForm").addEventListener("submit", submitAgentPayout);
+  if ($("#agentIdCardBtn")) $("#agentIdCardBtn").addEventListener("click", () => openAgentIdCard(state.currentAgent));
+  if ($("#printAgentIdBtn")) $("#printAgentIdBtn").addEventListener("click", printAgentIdCard);
+  $$("[data-open-agent-register]").forEach((button) => button.addEventListener("click", (event) => {
+    event.preventDefault();
+    $(".login-dropdown")?.classList.remove("open");
+    $(".login-toggle")?.setAttribute("aria-expanded", "false");
+    openLogin("agent", "signup");
+  }));
   $("#storyForm").addEventListener("submit", submitStory);
   $("#clearStoryForm").addEventListener("click", () => $("#storyForm").reset());
   $("#logoutBtn").addEventListener("click", logout);
@@ -190,6 +244,8 @@ async function loadDashboardData() {
   state.profiles = cleanProfiles(result.profiles || []);
   state.agents = cleanAgents(result.agents || []);
   state.payments = cleanPayments(result.payments || []);
+  state.agentPayouts = cleanAgentPayouts(result.agentPayouts || []);
+  state.currentAgent = result.currentAgent || null;
   state.stories = cleanStories(result.stories || []);
   renderStats();
   renderDashboard();
@@ -204,7 +260,10 @@ function applyFilters(formData) {
     if (filters.ageMax && Number(profile.age || 0) > Number(filters.ageMax)) return false;
     if (filters.gender && !sameChoice(profile.gender, filters.gender)) return false;
     if (filters.religion && !sameChoice(profile.religion, filters.religion)) return false;
-    if (filters.city && !includes(profile.city, filters.city)) return false;
+    if (filters.city) {
+      const location = [profile.villageTown, profile.district, profile.city, profile.state].filter(Boolean).join(" ");
+      if (!includes(location, filters.city)) return false;
+    }
     if (filters.education && !includes(profile.education, filters.education)) return false;
     if (filters.occupation && !includes(profile.occupation, filters.occupation)) return false;
     if (filters.community && !includes(profile.community, filters.community)) return false;
@@ -243,7 +302,7 @@ function profileCard(profile) {
         ${chip(profile.age ? `${profile.age} yrs` : "")}
         ${chip(profile.height)}
         ${chip(profile.complexion)}
-        ${chip([profile.thana || profile.block, profile.district].filter(Boolean).join(", "))}
+        ${chip([profile.villageTown, profile.district].filter(Boolean).join(", "))}
       </div>
       <div class="meta">
         ${chip(profile.religion)}
@@ -269,11 +328,34 @@ function renderStats() {
   if ($("#statAgents")) $("#statAgents").textContent = state.agents.length;
 }
 
-function openLogin(role) {
-  $("#loginTitle").textContent = role === "admin" ? "Admin Login" : "Agent Login";
+function showAgentSignupView() {
+  $("#loginPanel")?.classList.add("hidden");
+  $("#agentSignupPanel")?.classList.remove("hidden");
+  $("#loginModalCard")?.classList.add("wide");
+  $("#loginTitle").textContent = "এজেন্ট একাউন্ট তৈরি";
+}
+
+function showAgentLoginView() {
+  $("#loginPanel")?.classList.remove("hidden");
+  $("#agentSignupPanel")?.classList.add("hidden");
+  $("#loginModalCard")?.classList.remove("wide");
+  $("#loginTitle").textContent = "Agent Login";
+}
+
+function openLogin(role, view = "login") {
+  const isAgent = role === "agent";
   $("#loginForm [name='role']").value = role;
   $("#loginForm").reset();
   $("#loginForm [name='role']").value = role;
+  $("#agentLoginFooter")?.classList.toggle("hidden", !isAgent);
+  if (isAgent) {
+    view === "signup" ? showAgentSignupView() : showAgentLoginView();
+  } else {
+    $("#loginTitle").textContent = "Admin Login";
+    $("#loginPanel")?.classList.remove("hidden");
+    $("#agentSignupPanel")?.classList.add("hidden");
+    $("#loginModalCard")?.classList.remove("wide");
+  }
   openModal("loginModal");
 }
 
@@ -312,13 +394,26 @@ function showDashboard() {
   $("#dashboardSection").classList.remove("hidden");
   $("#dashboardTitle").textContent = state.session.role === "admin" ? "Admin Dashboard" : "Agent Dashboard";
   $("#dashboardSub").textContent = state.session.role === "admin"
-    ? "View, edit, approve and delete client profiles. Create and manage agent accounts."
-    : "View, edit and collect payments only for clients created by this agent.";
+    ? "Manage agents, client profiles, payments and payouts."
+    : "Manage your clients, payments, account and view commission details.";
   $("#sessionName").textContent = state.session.name || state.session.role;
-  $("#sessionInfo").textContent = state.session.role === "admin"
-    ? "Admin can see every profile and every agent."
-    : `Agent ID: ${state.session.agentId || ""} · Only this agent's own clients are visible.`;
+  if (state.session.role === "admin") {
+    $("#sessionInfo").textContent = "Admin can see every profile, agent and payout.";
+    $("#agentCommissionBar")?.classList.add("hidden");
+    $("#agentIdCardBtn")?.classList.add("hidden");
+  } else {
+    const agent = state.currentAgent || {};
+    $("#sessionInfo").textContent = `Agent ID: ${state.session.agentId || ""} · Level: ${agent.level || state.session.level || "Standard"}`;
+    $("#agentCommissionBar")?.classList.remove("hidden");
+    if ($("#commReg")) $("#commReg").textContent = `${agent.regCommission || state.session.regCommission || 30}%`;
+    if ($("#commMarriage")) $("#commMarriage").textContent = `${agent.marriageCommission || state.session.marriageCommission || 25}%`;
+    if ($("#commLevel")) $("#commLevel").textContent = agent.level || state.session.level || "Standard";
+    if ($("#commAgentId")) $("#commAgentId").textContent = state.session.agentId || "-";
+    $("#agentIdCardBtn")?.classList.remove("hidden");
+  }
   $("#agentTools").classList.toggle("hidden", true);
+  $("#myAccountTools")?.classList.toggle("hidden", true);
+  $("#agentPayoutTools")?.classList.toggle("hidden", true);
   renderTabs();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -326,8 +421,8 @@ function showDashboard() {
 function renderTabs() {
   const tabs = $("#dashboardTabs");
   const items = state.session.role === "admin"
-    ? [["profiles", "Profiles"], ["marriages", "Marriages"], ["payments", "Payments"], ["agents", "Agents"], ["agentForm", "Create Agent"], ["stories", "Stories"]]
-    : [["profiles", "My Clients"], ["marriages", "Marriages"], ["payments", "Payments"]];
+    ? [["profiles", "Profiles"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agents", "Agents"], ["agentPayouts", "Agent Payouts"], ["agentForm", "Create Agent"], ["stories", "Stories"]]
+    : [["profiles", "My Clients"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agentPayouts", "My Payouts"], ["myAccount", "My Account"]];
   tabs.innerHTML = "";
   items.forEach(([key, label]) => {
     const button = document.createElement("button");
@@ -365,15 +460,21 @@ function renderDashboard() {
   }
 
   $("#agentTools").classList.toggle("hidden", !(state.activeTab === "agentForm" && state.session.role === "admin"));
+  $("#myAccountTools")?.classList.toggle("hidden", !(state.activeTab === "myAccount" && state.session.role === "agent"));
+  $("#agentPayoutTools")?.classList.toggle("hidden", !(state.activeTab === "agentPayouts" && state.session.role === "admin"));
 
   if (state.activeTab === "payments") {
     renderPaymentTable();
+  } else if (state.activeTab === "agentPayouts") {
+    renderAgentPayoutTable();
   } else if (state.activeTab === "marriages") {
     renderMarriageTable();
   } else if (state.activeTab === "agents" && state.session.role === "admin") {
     renderAgentTable();
   } else if (state.activeTab === "agentForm" && state.session.role === "admin") {
     renderAgentFormView();
+  } else if (state.activeTab === "myAccount" && state.session.role === "agent") {
+    renderMyAccountView();
   } else if (state.activeTab === "stories" && state.session.role === "admin") {
     renderStoryTable();
   } else {
@@ -572,7 +673,7 @@ function renderPaymentTable() {
   });
 }
 function renderAgentTable() {
-  $("#tableHead").innerHTML = `<tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Area</th><th>Password</th><th>Status</th><th>Clients</th><th>Actions</th></tr>`;
+  $("#tableHead").innerHTML = `<tr><th>ID</th><th>Photo</th><th>Name</th><th>Phone</th><th>Area</th><th>Level</th><th>Status</th><th>Clients</th><th>Actions</th></tr>`;
   const body = $("#tableBody");
   body.innerHTML = "";
   if (!state.agents.length) {
@@ -581,23 +682,268 @@ function renderAgentTable() {
   }
   state.agents.forEach((agent) => {
     const count = state.profiles.filter((profile) => String(profile.agentId || "") === String(agent.id || "")).length;
+    const photo = photoUrl(agent.photo);
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${escapeHtml(agent.id || "")}</td>
-      <td><strong>${escapeHtml(agent.name || "")}</strong></td>
+      <td>${photo ? `<img class="thumb" src="${escapeAttr(photo)}" alt="">` : ""}</td>
+      <td><strong>${escapeHtml(agent.name || "")}</strong><br><span class="note">${escapeHtml(agent.email || "")}</span></td>
       <td>${escapeHtml(agent.phone || "")}</td>
-      <td>${escapeHtml(agent.email || "")}</td>
       <td>${escapeHtml(agent.area || "")}</td>
-      <td><code>${escapeHtml(agent.password || "Set new password")}</code></td>
+      <td>${escapeHtml(agent.level || "Standard")}</td>
       <td>${statusBadge(agent.status || "active")}</td>
       <td>${count}</td>
       <td><div class="row-actions"></div></td>`;
     const actions = tr.querySelector(".row-actions");
+    addAction(actions, "View", "btn-blue", () => openAgentDetail(agent));
     addAction(actions, "Edit", "btn-gold", () => fillAgentForm(agent));
+    if (agent.status === "pending") addAction(actions, "Approve", "btn-green", () => approveAgent(agent));
     addAction(actions, agent.status === "blocked" ? "Activate" : "Block", "btn-blue", () => toggleAgent(agent));
     addAction(actions, "Delete", "btn-danger", () => deleteAgent(agent));
     body.appendChild(tr);
   });
+}
+
+function renderAgentPayoutTable() {
+  const payouts = cleanAgentPayouts(state.agentPayouts || []);
+  $("#tableHead").innerHTML = `<tr><th>Payout ID</th><th>Agent</th><th>Amount</th><th>Date</th><th>Mode</th><th>For</th><th>Note</th><th>Paid By</th></tr>`;
+  const body = $("#tableBody");
+  body.innerHTML = "";
+  if (!payouts.length) {
+    body.innerHTML = `<tr><td colspan="8">No agent payouts yet.</td></tr>`;
+    return;
+  }
+  payouts.forEach((payout) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(payout.payoutId || "")}</td>
+      <td><strong>${escapeHtml(payout.agentName || "")}</strong><br><span class="note">${escapeHtml(payout.agentId || "")}</span></td>
+      <td><strong class="amount-credit">+₹${escapeHtml(payout.amount || "0")}</strong></td>
+      <td>${escapeHtml(formatDate(payout.payoutDate) || payout.payoutDate || "")}</td>
+      <td>${escapeHtml(payout.mode || "")}</td>
+      <td>${escapeHtml(payout.purpose || "")}</td>
+      <td>${escapeHtml(payout.note || "")}</td>
+      <td>${escapeHtml(payout.paidByName || payout.paidByRole || "")}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function renderMyAccountView() {
+  $("#tableHead").innerHTML = "";
+  const body = $("#tableBody");
+  body.innerHTML = `<tr><td>Use the form above to view and edit your agent profile.</td></tr>`;
+  fillMyAccountForm(state.currentAgent || {});
+}
+
+function fillMyAccountForm(agent) {
+  const form = $("#myAccountForm");
+  if (!form) return;
+  const hydrated = hydrateLegacyAgent(agent);
+  ["name", "gender", "dob", ...AGENT_ADDRESS_FIELDS, "phone", "whatsapp", "email", "aadhaar", ...AGENT_BANK_FIELDS, "area"].forEach((key) => {
+    if (form.elements[key]) form.elements[key].value = key === "dob" ? formatDate(hydrated[key]) : hydrated[key] || "";
+  });
+  if (form.elements.currentPassword) form.elements.currentPassword.value = "";
+  if (form.elements.newPassword) form.elements.newPassword.value = "";
+  if ($("#myAccountPhotoFile")) $("#myAccountPhotoFile").value = "";
+}
+
+function openAgentDetail(agent) {
+  state.activeAgentDetail = agent;
+  $("#agentDetailTitle").textContent = agent.name || "Agent Profile";
+  const photo = photoUrl(agent.photo);
+  const payouts = cleanAgentPayouts(state.agentPayouts || []).filter((p) => String(p.agentId || "") === String(agent.id || ""));
+  const totalPayout = payouts.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const fields = [
+    ["Agent ID", agent.id], ["Name", agent.name], ["Gender", agent.gender], ["DOB", formatDate(agent.dob)],
+    ["House No", agent.houseNo], ["Village / Town", agent.villageTown], ["Post Office", agent.postOffice],
+    ["Police Station", agent.policeStation], ["District", agent.district], ["State", agent.state], ["PIN Code", agent.pinCode],
+    ["Full Address", formatAgentAddress(agent)],
+    ["Phone", agent.phone], ["WhatsApp", agent.whatsapp], ["Email", agent.email],
+    ["Aadhaar", agent.aadhaar],
+    ["Bank Name", agent.bankName], ["IFSC Code", agent.ifscCode], ["Account Number", agent.accountNumber],
+    ["Account Holder", agent.accountHolderName], ["Bank Summary", formatAgentBank(agent)], ["UPI ID", agent.upiId],
+    ["Working Area", agent.area], ["Level", agent.level], ["Status", agent.status],
+    ["Reg. Commission", `${agent.regCommission || 30}%`], ["Marriage Commission", `${agent.marriageCommission || 25}%`],
+    ["Password", agent.password || "Set new password"], ["Total Payout", `₹${totalPayout}`]
+  ];
+  $("#agentDetailBody").innerHTML = `
+    <div class="detail-hero">
+      <div class="detail-photo-wrap">${photo ? `<img class="detail-photo" src="${escapeAttr(photo)}" alt="">` : `<div class="detail-photo avatar">${initials(agent.name)}</div>`}</div>
+      <div class="detail-summary">
+        ${statusBadge(agent.status || "active")}
+        <h4>${escapeHtml(agent.name || "Agent")}</h4>
+        <p>${escapeHtml([agent.level, agent.area].filter(Boolean).join(" · "))}</p>
+      </div>
+    </div>
+    <div class="agent-detail-grid">${fields.map(([label, value]) => `<p><strong>${escapeHtml(label)}</strong>${formatDetailValue(value)}</p>`).join("")}</div>
+    ${payouts.length ? `<div class="detail-payment-list" style="margin-top:12px">${payouts.map((p) => `<div class="payment-mini-row"><strong>+₹${escapeHtml(p.amount || "0")}</strong><span>${escapeHtml(p.payoutDate || "")}</span><span>${escapeHtml(p.mode || "")}</span><em>${escapeHtml(p.purpose || "")}</em></div>`).join("")}</div>` : ""}`;
+  const actions = $("#agentDetailActions");
+  actions.innerHTML = "";
+  addAction(actions, "Edit", "btn-gold", () => { closeModals(); fillAgentForm(agent); });
+  addAction(actions, "ID Card", "btn-blue", () => openAgentIdCard(agent));
+  addAction(actions, "Reset Password", "btn-green", () => resetAgentPassword(agent));
+  if (state.session.role === "admin") {
+    addAction(actions, "Add Payout", "btn-green", () => { closeModals(); openAgentPayoutForm(agent); });
+    if (agent.status === "pending") addAction(actions, "Approve", "btn-green", () => approveAgent(agent));
+  }
+  openModal("agentDetailModal");
+}
+
+function openAgentPayoutForm(agent) {
+  state.activeTab = "agentPayouts";
+  renderTabs();
+  renderDashboard();
+  const form = $("#agentPayoutForm");
+  if (!form) return;
+  form.reset();
+  if ($("#payoutAgentId")) $("#payoutAgentId").value = agent?.id || "";
+  if (form.elements.payoutDate) form.elements.payoutDate.value = new Date().toISOString().slice(0, 10);
+  if ($("#agentPayoutSub")) $("#agentPayoutSub").textContent = agent?.name ? `Record payout for ${agent.name} (${agent.id})` : "Record commission payout to agent.";
+  $("#agentPayoutTools")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function openAgentIdCard(agent) {
+  if (!agent?.id) return toast("Agent profile not found");
+  const photo = photoUrl(agent.photo);
+  $("#agentIdCardBody").innerHTML = `
+    <div class="agent-id-card" id="agentIdPrintArea">
+      <div class="id-header"><h4 style="margin:0">বিবাহ বন্ধন 2026</h4><small>Authorized Agent</small></div>
+      <div class="id-body">
+        ${photo ? `<img class="id-photo" src="${escapeAttr(photo)}" alt="">` : `<div class="id-photo avatar">${initials(agent.name)}</div>`}
+        <h4 style="margin:8px 0 4px">${escapeHtml(agent.name || "")}</h4>
+        <p class="note" style="margin:0 0 12px">${escapeHtml(agent.id || "")}</p>
+        <div class="id-meta">
+          <p><span>Level</span><strong>${escapeHtml(agent.level || "Standard")}</strong></p>
+          <p><span>Phone</span><strong>${escapeHtml(agent.phone || "")}</strong></p>
+          <p><span>Area</span><strong>${escapeHtml(agent.area || "")}</strong></p>
+          <p><span>Reg. Comm.</span><strong>${escapeHtml(agent.regCommission || 30)}%</strong></p>
+          <p><span>Marriage Comm.</span><strong>${escapeHtml(agent.marriageCommission || 25)}%</strong></p>
+        </div>
+      </div>
+    </div>`;
+  openModal("agentIdCardModal");
+}
+
+function printAgentIdCard() {
+  window.print();
+}
+
+async function approveAgent(agent) {
+  const level = prompt("Set agent level (Standard / Silver / Gold / Platinum):", agent.level || "Standard");
+  if (level === null) return;
+  const result = await api("approveAgent", { token: state.session.token, id: agent.id, status: "active", level: level || agent.level || "Standard" });
+  if (!result.ok) return toast(result.error || "Approve failed");
+  toast("Agent approved");
+  closeModals();
+  loadDashboardData();
+}
+
+async function resetAgentPassword(agent) {
+  const password = prompt(`New password for ${agent.name || agent.id}:`, agent.password || "");
+  if (!password) return;
+  const result = await api("resetAgentPassword", { token: state.session.token, id: agent.id, password });
+  if (!result.ok) return toast(result.error || "Password reset failed");
+  toast(`Password reset: ${result.password || password}`);
+  loadDashboardData();
+}
+
+async function submitAgentPayout(event) {
+  event.preventDefault();
+  const button = event.target.querySelector("button[type='submit']");
+  button.disabled = true;
+  button.textContent = "Saving...";
+  try {
+    const payload = Object.fromEntries(new FormData(event.target).entries());
+    payload.token = state.session.token;
+    const result = await api("saveAgentPayout", payload);
+    if (!result.ok) throw new Error(result.error || "Payout save failed");
+    toast("Agent payout saved");
+    event.target.reset();
+    if (event.target.elements.payoutDate) event.target.elements.payoutDate.value = new Date().toISOString().slice(0, 10);
+    await loadDashboardData();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save Payout";
+  }
+}
+
+async function submitMyAccount(event) {
+  event.preventDefault();
+  const button = event.target.querySelector("button[type='submit']");
+  button.disabled = true;
+  button.textContent = "Saving...";
+  try {
+    const payload = normalizeAgentPayload(Object.fromEntries(new FormData(event.target).entries()));
+    payload.token = state.session.token;
+    payload.phone = String(payload.phone || "").replace(/\D/g, "");
+    payload.whatsapp = String(payload.whatsapp || "").replace(/\D/g, "");
+    if (payload.pinCode && !/^\d{6}$/.test(payload.pinCode)) throw new Error("Valid 6-digit PIN code required");
+    const photoFile = $("#myAccountPhotoFile")?.files?.[0];
+    if (photoFile) payload.photo = await fileToDataUrl(photoFile);
+    const result = await api("updateAgentSelf", payload);
+    if (!result.ok) throw new Error(result.error || "Profile update failed");
+    state.currentAgent = result.agent || state.currentAgent;
+    if (result.agent?.name) state.session.name = result.agent.name;
+    toast("Profile updated");
+    await loadDashboardData();
+    showDashboard();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save My Profile";
+  }
+}
+
+async function submitAgentRegister(event) {
+  event.preventDefault();
+  const form = event.target;
+  const button = form.querySelector("button[type='submit']");
+  button.disabled = true;
+  button.textContent = "Submitting...";
+  try {
+    const payload = normalizeAgentPayload(Object.fromEntries(new FormData(form).entries()));
+    if (payload.password !== payload.passwordConfirm) throw new Error("Password and confirm password do not match");
+    delete payload.passwordConfirm;
+    payload.phone = String(payload.phone || "").replace(/\D/g, "");
+    payload.whatsapp = String(payload.whatsapp || "").replace(/\D/g, "");
+    if (!/^[6-9]\d{9}$/.test(payload.phone)) throw new Error("Valid 10-digit phone number required");
+    if (payload.pinCode && !/^\d{6}$/.test(payload.pinCode)) throw new Error("Valid 6-digit PIN code required");
+    const photoFile = $("#regAgentPhotoFile")?.files?.[0];
+    const aadhaarFile = $("#regAgentAadhaarFile")?.files?.[0];
+    const bankFile = $("#regAgentBankFile")?.files?.[0];
+    if (photoFile) payload.photo = await fileToDataUrl(photoFile);
+    if (aadhaarFile) payload.aadhaarDoc = await fileToDataUrl(aadhaarFile);
+    if (bankFile) payload.bankDoc = await fileToDataUrl(bankFile);
+    const result = await api("registerAgent", payload);
+    if (!result.ok) throw new Error(result.error || "Registration failed");
+    form.reset();
+    clearAgentFileInputs("reg");
+    showAgentLoginView();
+    showMessageModal("Agent registration submitted. Admin will approve your account.", "success");
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Submit Registration";
+  }
+}
+
+function clearAgentFileInputs(prefix = "admin") {
+  const map = prefix === "reg"
+    ? ["regAgentPhotoFile", "regAgentAadhaarFile", "regAgentBankFile"]
+    : ["agentPhotoFile", "agentAadhaarFile", "agentBankFile"];
+  map.forEach((id) => { if ($("#" + id)) $("#" + id).value = ""; });
+}
+
+function cleanAgentPayouts(list) {
+  return (Array.isArray(list) ? list : []).filter((payout) =>
+    String(payout?.payoutId || "").trim() ||
+    String(payout?.agentId || "").trim() ||
+    String(payout?.amount || "").trim()
+  );
 }
 
 function cleanProfiles(list) {
@@ -786,15 +1132,36 @@ async function deleteProfile(profile) {
 
 async function submitAgent(event) {
   event.preventDefault();
-  const payload = Object.fromEntries(new FormData(event.target).entries());
-  payload.token = state.session.token;
-  const result = await api("saveAgent", payload);
-  if (!result.ok) return toast(result.error || "Agent save failed");
-  toast("Agent saved");
-  event.target.reset();
-  state.activeTab = "agents";
-  await loadDashboardData();
-  renderTabs();
+  const form = event.target;
+  const button = form.querySelector("button[type='submit']");
+  button.disabled = true;
+  button.textContent = "Saving...";
+  try {
+    const payload = normalizeAgentPayload(Object.fromEntries(new FormData(form).entries()));
+    payload.token = state.session.token;
+    payload.phone = String(payload.phone || "").replace(/\D/g, "");
+    payload.whatsapp = String(payload.whatsapp || "").replace(/\D/g, "");
+    if (payload.pinCode && !/^\d{6}$/.test(payload.pinCode)) throw new Error("Valid 6-digit PIN code required");
+    const photoFile = $("#agentPhotoFile")?.files?.[0];
+    const aadhaarFile = $("#agentAadhaarFile")?.files?.[0];
+    const bankFile = $("#agentBankFile")?.files?.[0];
+    if (photoFile) payload.photo = await fileToDataUrl(photoFile);
+    if (aadhaarFile) payload.aadhaarDoc = await fileToDataUrl(aadhaarFile);
+    if (bankFile) payload.bankDoc = await fileToDataUrl(bankFile);
+    const result = await api("saveAgent", payload);
+    if (!result.ok) throw new Error(result.error || "Agent save failed");
+    toast("Agent saved");
+    form.reset();
+    clearAgentFileInputs();
+    state.activeTab = "agents";
+    await loadDashboardData();
+    renderTabs();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save Agent";
+  }
 }
 
 async function submitStory(event) {
@@ -838,11 +1205,14 @@ function fillAgentForm(agent) {
   renderDashboard();
   const form = $("#agentForm");
   form.reset();
-  Object.entries(agent).forEach(([key, value]) => {
+  clearAgentFileInputs();
+  Object.entries(hydrateLegacyAgent(agent)).forEach(([key, value]) => {
     const input = form.elements[key];
-    if (input) input.value = value || "";
+    if (input) input.value = key === "dob" ? formatDate(value) : value || "";
   });
-  form.elements.password.value = agent.password || "";
+  if (form.elements.password) form.elements.password.value = agent.password || "";
+  if (form.elements.regCommission && !agent.regCommission) form.elements.regCommission.value = "30";
+  if (form.elements.marriageCommission && !agent.marriageCommission) form.elements.marriageCommission.value = "25";
   $("#agentTools").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
@@ -1166,6 +1536,9 @@ function normalizeMessage(message) {
     "Status updated": ["স্ট্যাটাস আপডেট হয়েছে", "Client profile-এর status সফলভাবে পরিবর্তন করা হয়েছে।"],
     "Profile deleted": ["প্রোফাইল ডিলিট হয়েছে", "Client profile list থেকে এই profile সরানো হয়েছে।"],
     "Agent saved": ["Agent সেভ হয়েছে", "Agent account সফলভাবে সেভ করা হয়েছে।"],
+    "Agent approved": ["Agent approve হয়েছে", "Agent account active করা হয়েছে।"],
+    "Agent payout saved": ["Agent payout সেভ হয়েছে", "Commission payout record সফলভাবে সেভ করা হয়েছে।"],
+    "Profile updated": ["প্রোফাইল আপডেট হয়েছে", "আপনার agent profile সফলভাবে আপডেট করা হয়েছে।"],
     "Agent status updated": ["Agent status আপডেট হয়েছে", "Agent account-এর status সফলভাবে পরিবর্তন করা হয়েছে।"],
     "Agent deleted": ["Agent ডিলিট হয়েছে", "Agent account list থেকে সরানো হয়েছে।"],
     "Story saved": ["Story সেভ হয়েছে", "Success story homepage-এর জন্য সেভ করা হয়েছে।"],
