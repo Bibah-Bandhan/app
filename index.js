@@ -215,7 +215,7 @@ async function api(action, payload = {}) {
 async function loadPublicData() {
   $("#cards").innerHTML = emptyMessage("Loading profiles...");
   try {
-    const response = await fetch(`${SCRIPT_URL}?view=public`);
+    const response = await fetch(`${SCRIPT_URL}?view=public&t=${Date.now()}`,{cache:"no-store"});
     const data = await response.json();
     state.profiles = cleanProfiles(Array.isArray(data.profiles) ? data.profiles : Array.isArray(data) ? data : []);
     state.agents = cleanAgents(Array.isArray(data.agents) ? data.agents : []);
@@ -302,12 +302,11 @@ function profileCard(profile) {
         ${chip(profile.age ? `${profile.age} yrs` : "")}
         ${chip(profile.height)}
         ${chip(profile.complexion)}
-        ${chip([profile.villageTown, profile.district].filter(Boolean).join(", "))}
+        ${chip([profile.district].filter(Boolean).join(", "))}
       </div>
       <div class="meta">
         ${chip(profile.religion)}
         ${chip(profile.community)}
-        ${chip(profile.occupation)}
       </div>
     </div>
     <div class="card-actions">
@@ -1382,14 +1381,14 @@ function openDetails(profile) {
   const publicFields = [
     ["ID", profile.id], ["বয়স", profile.age], ["লিঙ্গ", profile.gender],
     ["উচ্চতা", profile.height], ["গায়ের রং", profile.complexion],
-    ["ধর্ম", profile.religion], ["সম্প্রদায়", profile.community], ["জাতি", profile.caste],
-    ["শিক্ষা", profile.education], ["নিজের পেশা", profile.occupation],
+    ["ধর্ম", profile.religion],
+    ["শিক্ষা", profile.education],
     ["বৈবাহিক অবস্থা", profile.maritalStatus], ["খাদ্যাভ্যাস", profile.diet],
     ["জেলা", profile.district], ["রাজ্য", profile.state],
     ["পছন্দের গায়ের রং", profile.prefComplexion], ["পছন্দের শিক্ষা", profile.prefEducationLevel],
     ["পছন্দের বয়স", profile.prefAgeRange], ["পছন্দের উচ্চতা", profile.prefHeight],
-    ["পছন্দের পেশা", profile.prefLivelihood], ["নিজের সম্পর্কে", profile.about],
-    ["যোগাযোগ", "অফিস বা এজেন্টের সাথে যোগাযোগ করুন"]
+    ["পছন্দের পেশা", profile.prefLivelihood], 
+    ["যোগাযোগ", "এই প্রোফাইল পছন্দ হলে আমাদের অফিসে অথবা এজেন্টের সঙ্গে যোগাযোগ করুন। অফিস নম্বর - 9064899089."]
   ];
   const privateFields = [
     ["ID", profile.id], ["বয়স", profile.age], ["লিঙ্গ", profile.gender],
