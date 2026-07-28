@@ -1,4 +1,4 @@
-﻿const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyoGSVz24Cj73t--_LS8mjqJP8B6SAYg8_dJCaNkBbqB91Zqynoj1kkRba5Jh9ndtA4Q/exec";
+﻿const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZyVMom3Q9X1XGrI_23De56rC8Qd55FEOuTDv6pH2su86VLrP-5yVCZQcEXDSppcytYw/exec";
 
 const state = {
   profiles: [],
