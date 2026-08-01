@@ -16,7 +16,7 @@ const PROFILE_HEADERS = [
   'religion', 'community', 'motherTongue', 'caste', 'gotra', 'rashi', 'education', 'occupation',
   'fatherProfession', 'motherProfession', 'income', 'homeType', 'childOrder',
   'brothersCount', 'sistersCount', 'lifeWish', 'addressLine', 'villageTown', 'postOffice', 'policestation',
-  'district', 'state', 'pin', 'email', 'phone', 'diet', 'prefComplexion', 'prefEducationLevel',
+  'district', 'state', 'pin', 'email', 'phone', 'whatsapp', 'diet', 'prefComplexion', 'prefEducationLevel',
   'prefAgeRange', 'prefHeight', 'prefLivelihood', 'prefIncomeType', 'about', 'photo', 'documentType', 'document',
   'specialRequirement', 'requirementUpdatedAt', 'requirementUpdatedBy',
   'verificationRemark', 'verificationUpdatedAt', 'verificationUpdatedBy',
@@ -64,8 +64,15 @@ function doGet(e) {
     if (view === 'public') {
       return json_({
         ok: true,
-        profiles: profiles.filter(profile => profile.status === 'verified'),
-        agents: agents.filter(agent => agent.status === 'active'),
+        profiles: profiles
+          .filter(profile =>
+            profile.status === 'verified' &&
+            String(profile.marriageStatus || '').toLowerCase() !== 'completed'
+          )
+          .map(publicProfile_),
+        agents: agents
+          .filter(agent => agent.status === 'active')
+          .map(publicAgent_),
         stories: stories.filter(story => story.status === 'published')
       });
     }
@@ -814,6 +821,44 @@ function safeAgent_(agent, includePassword) {
   return safe;
 }
 
+function publicProfile_(profile) {
+  return {
+    id: profile.id || '',
+    fullName: profile.fullName || '',
+    age: profile.age || '',
+    gender: profile.gender || '',
+    height: profile.height || '',
+    complexion: profile.complexion || '',
+    religion: profile.religion || '',
+    community: profile.community || '',
+    motherTongue: profile.motherTongue || '',
+    education: profile.education || '',
+    occupation: profile.occupation || '',
+    maritalStatus: profile.maritalStatus || '',
+    diet: profile.diet || '',
+    district: profile.district || '',
+    state: profile.state || '',
+    photo: profile.photo || '',
+    prefComplexion: profile.prefComplexion || '',
+    prefEducationLevel: profile.prefEducationLevel || '',
+    prefAgeRange: profile.prefAgeRange || '',
+    prefHeight: profile.prefHeight || '',
+    prefLivelihood: profile.prefLivelihood || '',
+    status: 'verified'
+  };
+}
+
+function publicAgent_(agent) {
+  return {
+    id: agent.id || '',
+    name: agent.name || '',
+    district: agent.district || '',
+    area: agent.area || '',
+    photo: agent.photo || '',
+    status: 'active'
+  };
+}
+
 function formatAgentAddress_(agent) {
   const parts = [
     agent.houseNo, agent.villageTown, agent.postOffice, agent.policeStation,
@@ -919,9 +964,5 @@ function json_(payload) {
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
-
-
-
 
 

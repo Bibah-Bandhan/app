@@ -300,6 +300,7 @@
     .id { color: var(--rose); font-size: .78rem; font-weight: 900; }
     .meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
     .meta span { background: #fff8f4; border: 1px solid var(--line); border-radius: 999px; padding: 5px 8px; color: #5b4641; font-size: .8rem; font-weight: 700; }
+    .card-summary { margin: 10px 0 0; color: var(--muted); font-size: .88rem; font-weight: 700; line-height: 1.45; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
     .card-actions { margin-top: auto; display: flex; gap: 8px; padding: 12px; border-top: 1px solid #f2e6df; }
     .card-actions .btn { flex: 1; min-height: 38px; padding: 8px; }
 
@@ -1581,39 +1582,26 @@
       min-height: 42px;
     }
 
-    .social-box{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding-right: 50px;
-    gap:16px;
-}
+    
+/* Updated Footer CSS Rules */
+    .footer { margin-top: 34px; background: #180d0f; color: #f8ece8; padding: 40px 0 20px; }
+    .footer-grid { display: grid; grid-template-columns: 1.8fr 1fr 1fr 1fr 1.2fr; gap: 24px; }
+    .footer strong { color: #fff; font-size: 1.05rem; display: block; margin-bottom: 12px; }
+    .footer a { color: #f8d7ca; display: block; margin: 8px 0; font-size: 0.9rem; transition: color 0.2s ease; }
+    .footer a:hover { color: #ffffff; }
+    .social-links { display: flex; gap: 12px; margin-top: 14px; }
+    .social-links a { display: inline-flex; width: 36px; height: 36px; background: rgba(255,255,255,0.08); border-radius: 50%; align-items: center; justify-content: center; color: #f8d7ca; margin: 0; transition: background 0.2s ease, color 0.2s ease; }
+    .social-links a:hover { background: var(--rose); color: #fff; }
+    .contact-info p { color: #f8d7ca; font-size: 0.88rem; margin: 6px 0; line-height: 1.5; }
+    .footer-divider { border: 0; height: 1px; background: rgba(234, 219, 210, 0.15); margin: 30px 0 20px; }
+    .footer-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.85rem; color: #d1beba; }
+    .footer-bottom p { margin: 0; }
+    .footer-disclaimer { margin-top: 18px; padding: 14px 16px; background: rgba(255, 255, 255, 0.04); border-left: 3px solid var(--rose); border-radius: 4px; font-size: 0.82rem; color: #d1beba; line-height: 1.6; }
+    .footer-disclaimer p { margin: 0; }
+    .footer-note { font-size: 0.85rem; color: #b8a6a2; margin-top: 10px; line-height: 1.5; }
 
-.social-links{
-    display:flex;
-    gap:10px;
-}
+    
 
-.social-links a{
-    width:42px;
-    height:42px;
-    border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:#fff;
-    color:#a7193f;
-    font-size:18px;
-    text-decoration:none;
-    box-shadow:0 4px 12px rgba(0,0,0,.12);
-    transition:.3s;
-}
-
-.social-links a:hover{
-    transform:translateY(-3px);
-    background:#a7193f;
-    color:#fff;
-}
 
     @media (max-width: 980px) {
       .hero-grid, .browse-layout, .dashboard-shell, .detail-grid { grid-template-columns: 1fr; }
@@ -1896,8 +1884,8 @@
             👤 লগইন ▾
           </button>
           <div class="dropdown-content">
-            <a href="#" data-open-login="agent">এজেন্ট লগইন</a>
-            <a href="#" data-open-login="admin">অ্যাডমিন লগইন</a>
+            <a href="#" data-open-login="agent">এজেন্ট</a>
+            <a href="#" data-open-login="admin">অ্যাডমিন</a>
           </div>
         </div>
         <button type="button" class="btn btn-primary" data-open-profile>প্রোফাইল তৈরি</button>
@@ -2314,39 +2302,116 @@
   </main>
 
   <footer class="footer public-view">
-    <div class="container footer-grid">
+  <div class="container">
+    <div class="footer-grid">
+      <!-- Column 1: Brand & Social Links -->
       <div class="social-box">
-    <div>
         <strong>বিবাহ বন্ধন</strong>
-        <p class="note">আমাদের Social Media</p>
-    </div>
-
-    <div class="social-links">
-        <a href="https://facebook.com/" target="_blank" aria-label="Facebook">
+        <p class="note">আমাদের Social Media-তে যুক্ত থাকুন</p>
+        <div class="social-links">
+          <a href="https://facebook.com/bibahbandhan" target="_blank" aria-label="Facebook">
             <i class="fab fa-facebook-f"></i>
-        </a>
-
-        <a href="https://instagram.com/" target="_blank" aria-label="Instagram">
+          </a>
+          <a href="https://instagram.com/bibahbandhan" target="_blank" aria-label="Instagram">
             <i class="fab fa-instagram"></i>
-        </a>
-
-        <a href="https://youtube.com/" target="_blank" aria-label="YouTube">
+          </a>
+          <a href="https://youtube.com/@bibahbandhan" target="_blank" aria-label="YouTube">
             <i class="fab fa-youtube"></i>
-        </a>
-
-        <a href="https://wa.me/919064899089" target="_blank" aria-label="WhatsApp">
+          </a>
+          <a href="https://wa.me/919064899089" target="_blank" aria-label="WhatsApp">
             <i class="fab fa-whatsapp"></i>
-        </a>
-
-        <a href="https://t.me/" target="_blank" aria-label="Telegram">
+          </a>
+          <a href="https://t.me/bibahbandhan" target="_blank" aria-label="Telegram">
             <i class="fab fa-telegram-plane"></i>
-        </a>
+          </a>
+        </div>
+      </div>
+
+      <!-- Column 2: Quick Pages -->
+      <div>
+        <strong>Pages</strong>
+        <a href="#home">Home</a>
+        <a href="#browse">Profiles</a>
+        <a href="#about">About</a>
+        <a href="#contact">Contact</a>
+      </div>
+
+      <!-- Column 3: Access & Portals -->
+      <div>
+        <strong>Access</strong>
+        <a href="#" data-open-login="agent">Agent Login</a>
+        <a href="#" data-open-agent-register>Become Agent</a>
+        <a href="#" data-open-login="admin">Admin Login</a>
+        <a href="#process">How It Works</a>
+      </div>
+
+      <!-- Column 4: Support Section -->
+      <div>
+        <strong>Support</strong>
+        <a href="faq.html">FAQ</a>
+        <a href="verify-profile.html">Verify Profile</a>
+        <a href="complaint.html">Submit Complaint</a>
+        <a href="feedback.html">Feedback</a>
+      </div>
+
+      <!-- Column 5: Legal Information -->
+      <div>
+        <strong>Legal</strong>
+        <a href="terms.html">Terms & Conditions</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="refund.html">Refund Policy</a>
+        <a href="disclaimer.html">Disclaimer</a>
+        <a href="safety.html">Safety Tips</a>
+      </div>
     </div>
-</div>
-      <div><strong>Pages</strong><a href="#browse">Profiles</a><a href="#about">About</a><a href="#contact">Contact</a></div>
-      <div><strong>Access</strong><a href="#" data-open-login="agent">Agent Login</a><a href="#" data-open-agent-register>Become Agent</a><a href="#" data-open-login="admin">Admin Login</a><a href="#process">How It Works</a></div>
+
+    <!-- Contact Office Details -->
+    <div class="footer-grid" style="margin-top: 24px;">
+      <div style="grid-column: 1 / -1; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 6px; border: 1px solid rgba(234,219,210,0.1);">
+        <strong style="margin-bottom: 8px;">Contact Office</strong>
+        <div class="contact-info" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+          <p>
+            <i class="fas fa-map-marker-alt" style="color: var(--rose);"></i>
+            <a href="https://maps.google.com/?q=Tapan,Dakshin+Dinajpur,West+Bengal" target="_blank" rel="noopener noreferrer">
+              Tapan, Dakshin Dinajpur, West Bengal - 733127
+            </a>
+          </p>
+          <p>
+            <i class="fas fa-phone-alt" style="color: var(--rose);"></i>
+            <a href="tel:+919064899089">+91 90648 99089</a>
+          </p>
+          <p>
+            <i class="fas fa-envelope" style="color: var(--rose);"></i>
+            <a href="mailto:info@bibahbandhan.in">info@bibahbandhan.in</a>
+          </p>
+          <p>
+            <i class="fas fa-clock" style="color: var(--rose);"></i>
+            10:00 AM - 7:00 PM
+          </p>
+        </div>
+      </div>
     </div>
-  </footer>
+
+    <!-- SEO Footer Note -->
+    <p class="footer-note">
+      Bibah Bandhan is a trusted Marriage Bureau in West Bengal helping brides and grooms find suitable life partners.
+    </p>
+
+    <hr class="footer-divider">
+
+    <!-- Footer Bottom Copyright Notice & Version -->
+    <div class="footer-bottom">
+      <p>© 2026 <strong>বিবাহ বন্ধন</strong>. All Rights Reserved.</p>
+      <p>Bibah Bandhan is an independent Marriage Bureau.</p>
+      <p style="opacity: 0.8; font-size: 0.85rem;">Version 1.0.0</p>
+    </div>
+
+    <!-- Legal Disclaimer -->
+    <div class="footer-disclaimer">
+      <p>⚠ "বিবাহ বন্ধন" শুধুমাত্র পাত্র-পাত্রীর পরিচয় করিয়ে দেওয়ার একটি Marriage Bureau। বিবাহ, সম্পর্ক অথবা ভবিষ্যতের কোনো সিদ্ধান্তের নিশ্চয়তা প্রদান করে না। প্রত্যেক ক্লায়েন্টকে নিজ দায়িত্বে পরিচয়পত্র, পারিবারিক তথ্য এবং অন্যান্য নথি যাচাই করার পরামর্শ দেওয়া হচ্ছে। যে কোনো আর্থিক লেনদেন নিজ দায়িত্বে সম্পন্ন করতে হবে।</p>
+    </div>
+  </div>
+</footer>
 
   <div class="float-contact public-view">
 

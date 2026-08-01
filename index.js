@@ -1,4 +1,4 @@
-﻿const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZyVMom3Q9X1XGrI_23De56rC8Qd55FEOuTDv6pH2su86VLrP-5yVCZQcEXDSppcytYw/exec";
+﻿const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxA9DGe0AWlBWhzx5UpqnUQrWvGZD8wMJ-yT0NCuvt0BWriollbf5bOM-q-j-i4q86yXw/exec";
 
 const state = {
   profiles: [],
@@ -247,6 +247,7 @@ async function loadDashboardData() {
   state.agentPayouts = cleanAgentPayouts(result.agentPayouts || []);
   state.currentAgent = result.currentAgent || null;
   state.stories = cleanStories(result.stories || []);
+  renderAgentDashboardPhoto(state.currentAgent);
   renderStats();
   renderDashboard();
 }
@@ -301,13 +302,13 @@ function profileCard(profile) {
       <div class="meta">
         ${chip(profile.age ? `${profile.age} yrs` : "")}
         ${chip(profile.height)}
-        ${chip(profile.complexion)}
         ${chip([profile.district].filter(Boolean).join(", "))}
       </div>
       <div class="meta">
         ${chip(profile.religion)}
         ${chip(profile.community)}
       </div>
+      <p class="card-summary">${escapeHtml([profile.education, profile.occupation].filter(Boolean).join(" • "))}</p>
     </div>
     <div class="card-actions">
       <button class="btn btn-soft" type="button">♡ Shortlist</button>
@@ -396,6 +397,7 @@ function showDashboard() {
     ? "Manage agents, client profiles, payments and payouts."
     : "Manage your clients, payments, account and view commission details.";
   $("#sessionName").textContent = state.session.name || state.session.role;
+  renderAgentDashboardPhoto(state.currentAgent);
   if (state.session.role === "admin") {
     $("#sessionInfo").textContent = "Admin can see every profile, agent and payout.";
     $("#agentCommissionBar")?.classList.add("hidden");
@@ -415,6 +417,21 @@ function showDashboard() {
   $("#agentPayoutTools")?.classList.toggle("hidden", true);
   renderTabs();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderAgentDashboardPhoto(agent) {
+  const box = $("#agentDashboardPhoto");
+  if (!box) return;
+  if (state.session?.role !== "agent") {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+  const photo = photoUrl(agent?.photo);
+  box.classList.remove("hidden");
+  box.innerHTML = photo
+    ? `<img src="${escapeAttr(photo)}" referrerpolicy="no-referrer" alt="${escapeAttr(agent?.name || "Agent")}">`
+    : `<div class="agent-dashboard-initials">${initials(agent?.name || state.session?.name)}</div>`;
 }
 
 function renderTabs() {
@@ -763,6 +780,7 @@ function openAgentDetail(agent) {
     ["Account Holder", agent.accountHolderName], ["Bank Summary", formatAgentBank(agent)], ["UPI ID", agent.upiId],
     ["Working Area", agent.area], ["Level", agent.level], ["Status", agent.status],
     ["Reg. Commission", `${agent.regCommission || 30}%`], ["Marriage Commission", `${agent.marriageCommission || 25}%`],
+    ["Photo", agent.photo], ["Aadhaar Document", agent.aadhaarDoc], ["Bank Document", agent.bankDoc],
     ["Password", agent.password || "Set new password"], ["Total Payout", `₹${totalPayout}`]
   ];
   $("#agentDetailBody").innerHTML = `
@@ -806,11 +824,14 @@ function openAgentIdCard(agent) {
   const photo = photoUrl(agent.photo);
   $("#agentIdCardBody").innerHTML = `
     <div class="agent-id-card" id="agentIdPrintArea">
-      <div class="id-header"><h4 style="margin:0">বিবাহ বন্ধন 2026</h4><small>Authorized Agent</small></div>
+      <div class="id-header">
+        <div class="id-brand">BB</div>
+        <div><h4>বিবাহ বন্ধন 2026</h4><small>Authorized Field Agent</small></div>
+      </div>
       <div class="id-body">
         ${photo ? `<img class="id-photo" src="${escapeAttr(photo)}" alt="">` : `<div class="id-photo avatar">${initials(agent.name)}</div>`}
-        <h4 style="margin:8px 0 4px">${escapeHtml(agent.name || "")}</h4>
-        <p class="note" style="margin:0 0 12px">${escapeHtml(agent.id || "")}</p>
+        <h4>${escapeHtml(agent.name || "")}</h4>
+        <p class="id-number">${escapeHtml(agent.id || "")}</p>
         <div class="id-meta">
           <p><span>Level</span><strong>${escapeHtml(agent.level || "Standard")}</strong></p>
           <p><span>Phone</span><strong>${escapeHtml(agent.phone || "")}</strong></p>
@@ -818,12 +839,17 @@ function openAgentIdCard(agent) {
           <p><span>Reg. Comm.</span><strong>${escapeHtml(agent.regCommission || 30)}%</strong></p>
           <p><span>Marriage Comm.</span><strong>${escapeHtml(agent.marriageCommission || 25)}%</strong></p>
         </div>
+        <div class="id-sign-row">
+          <span>Agent Signature</span>
+          <span>Office Seal</span>
+        </div>
       </div>
     </div>`;
   openModal("agentIdCardModal");
 }
 
 function printAgentIdCard() {
+  setActivePrintMode("agent-id-card");
   window.print();
 }
 
@@ -1083,9 +1109,13 @@ async function submitProfile(event) {
   try {
     const payload = Object.fromEntries(new FormData(form).entries());
     payload.phone = String(payload.phone || "").replace(/\D/g, "");
+    payload.whatsapp = String(payload.whatsapp || "").replace(/\D/g, "");
     payload.pin = String(payload.pin || "").replace(/\D/g, "");
     if (!/^[6-9]\d{9}$/.test(payload.phone)) {
       throw new Error("সঠিক ১০ সংখ্যার ভারতীয় মোবাইল নম্বর দিন");
+    }
+    if (payload.whatsapp && !/^[6-9]\d{9}$/.test(payload.whatsapp)) {
+      throw new Error("সঠিক ১০ সংখ্যার WhatsApp নম্বর দিন");
     }
     if (payload.pin && !/^\d{6}$/.test(payload.pin)) {
       throw new Error("সঠিক ৬ সংখ্যার পিন কোড দিন");
@@ -1325,6 +1355,7 @@ function setReceiptPrintSize(size) {
 }
 
 function printReceipt() {
+  setActivePrintMode("receipt");
   setReceiptPrintSize($("#receiptSize")?.value || "4x6");
   const previousTitle = document.title;
   if (activeReceiptTitle) document.title = activeReceiptTitle;
@@ -1334,6 +1365,10 @@ function printReceipt() {
   };
   window.addEventListener("afterprint", restoreTitle);
   window.print();
+}
+
+function setActivePrintMode(mode) {
+  document.body.dataset.printMode = mode || "";
 }
 
 function receiptFileName(receipt) {
@@ -1381,8 +1416,8 @@ function openDetails(profile) {
   const publicFields = [
     ["ID", profile.id], ["বয়স", profile.age], ["লিঙ্গ", profile.gender],
     ["উচ্চতা", profile.height], ["গায়ের রং", profile.complexion],
-    ["ধর্ম", profile.religion],
-    ["শিক্ষা", profile.education],
+    ["ধর্ম", profile.religion], ["সম্প্রদায়", profile.community], ["মাতৃভাষা", profile.motherTongue],
+    ["শিক্ষা", profile.education], ["নিজের পেশা", profile.occupation],
     ["বৈবাহিক অবস্থা", profile.maritalStatus], ["খাদ্যাভ্যাস", profile.diet],
     ["জেলা", profile.district], ["রাজ্য", profile.state],
     ["পছন্দের গায়ের রং", profile.prefComplexion], ["পছন্দের শিক্ষা", profile.prefEducationLevel],
@@ -1405,7 +1440,7 @@ function openDetails(profile) {
     ["পছন্দের গায়ের রং", profile.prefComplexion], ["পছন্দের শিক্ষা", profile.prefEducationLevel],
     ["পছন্দের বয়স", profile.prefAgeRange], ["পছন্দের উচ্চতা", profile.prefHeight],
     ["পছন্দের পেশা", profile.prefLivelihood], ["পছন্দের আয়", profile.prefIncomeType],
-    ["নিজের সম্পর্কে", profile.about], ["মোবাইল", profile.phone], ["ইমেল", profile.email],
+    ["নিজের সম্পর্কে", profile.about], ["মোবাইল", profile.phone], ["WhatsApp", profile.whatsapp], ["ইমেল", profile.email],
     ["ডকুমেন্ট টাইপ", profile.documentType], ["ডকুমেন্ট", profile.document]
   ];
   if (isLoggedIn) {
@@ -1458,14 +1493,76 @@ function openDetails(profile) {
     if (state.session.role === "admin" && String(profile.marriageStatus || "").toLowerCase() !== "completed") {
       addAction(detailActions, "Marriage Complete", "btn-green", () => openMarriageModal(profile));
     }
+    addAction(detailActions, "Print Agreement", "btn-blue", () => openAgreementPrint(profile));
   }
   openModal("detailModal");
+}
+
+function openAgreementPrint(profile) {
+  if (!profile?.id) return toast("Client profile not found");
+  activeReceiptTitle = `${sanitizeFileName(profile.fullName || profile.id)} agreement`;
+  const address = [profile.addressLine, profile.villageTown, profile.postOffice, profile.policestation, profile.district, profile.state, profile.pin].filter(Boolean).join(", ");
+  const partner = [profile.marriedWithName, profile.marriedWithProfileId].filter(Boolean).join(" - ") || "To be filled";
+  $("#receiptBody").innerHTML = `
+    <div class="receipt-paper receipt-a4 agreement-paper" id="receiptPrintArea">
+      <div class="receipt-top">
+        <div class="receipt-brand">
+          <div class="receipt-logo">BB</div>
+          <div>
+            <h3>বিবাহ বন্ধন 2026</h3>
+            <p>Client Marriage Agreement & Offline Record</p>
+          </div>
+        </div>
+        <div class="receipt-no">
+          <span>Profile ID</span>
+          <strong>${escapeHtml(profile.id || "N/A")}</strong>
+        </div>
+      </div>
+      <div class="agreement-title">
+        <h4>ম্যারেজ / সার্ভিস এগ্রিমেন্ট</h4>
+        <p>এই কাগজটি signed hard copy হিসেবে সংরক্ষণ করুন এবং signed copy scan করে client folder-এ রাখুন।</p>
+      </div>
+      <div class="receipt-grid agreement-grid">
+        <p><span>Client Name</span><strong>${escapeHtml(profile.fullName || "N/A")}</strong></p>
+        <p><span>Phone</span><strong>${escapeHtml(profile.phone || "N/A")}</strong></p>
+        <p><span>Gender / Age</span><strong>${escapeHtml([profile.gender, profile.age ? `${profile.age} yrs` : ""].filter(Boolean).join(" / ") || "N/A")}</strong></p>
+        <p><span>Education / Work</span><strong>${escapeHtml([profile.education, profile.occupation].filter(Boolean).join(" / ") || "N/A")}</strong></p>
+        <p><span>Address</span><strong>${escapeHtml(address || "N/A")}</strong></p>
+        <p><span>Agent ID</span><strong>${escapeHtml(profile.agentId || "Public")}</strong></p>
+        <p><span>Marriage Date</span><strong>${escapeHtml(formatDate(profile.marriageDate) || "To be filled")}</strong></p>
+        <p><span>Married With</span><strong>${escapeHtml(partner)}</strong></p>
+      </div>
+      <div class="agreement-block">
+        <h5>Agreement Notes</h5>
+        <ol>
+          <li>আমি উপরোক্ত profile details ঠিক আছে বলে নিশ্চিত করছি।</li>
+          <li>বিবাহ সম্পর্কিত final decision client/family নিজ দায়িত্বে যাচাই করে নেবে।</li>
+          <li>Payment, refund, service charge এবং communication record office receipt/profile ID অনুযায়ী বিবেচনা করা হবে।</li>
+          <li>Future dispute হলে এই signed copy, payment receipt এবং scanned document reference হিসেবে রাখা হবে।</li>
+        </ol>
+      </div>
+      <div class="scan-box">
+        <span>Scanned Signed Agreement File / Drive Link</span>
+        <strong></strong>
+      </div>
+      <div class="agreement-signatures">
+        <div><span>Client Signature</span></div>
+        <div><span>Guardian Signature</span></div>
+        <div><span>Agent Signature</span></div>
+        <div><span>Admin / Office Seal</span></div>
+      </div>
+    </div>`;
+  $("#receiptSize").value = "a4";
+  setReceiptPrintSize("a4");
+  setActivePrintMode("agreement");
+  closeModals();
+  openModal("receiptModal");
 }
 function formatDetailValue(value) {
   if (!value) return "N/A";
   const text = String(value);
   if (/^https?:\/\//i.test(text)) {
-    return `<a href="${escapeAttr(text)}" target="_blank" rel="noopener">Open link</a>`;
+    return `<a class="document-link" href="${escapeAttr(text)}" target="_blank" rel="noopener">Open link</a>`;
   }
   return escapeHtml(text);
 }
@@ -1833,6 +1930,3 @@ if ("serviceWorker" in navigator) {
       .catch(err => console.log(err));
   });
 }
-
-
-
