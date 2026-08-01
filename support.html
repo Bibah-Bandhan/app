@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Support | Bibah Bandhan</title>
+  <meta name="description" content="Bibah Bandhan support, FAQ, profile verification, complaint and feedback help.">
+  <link rel="icon" type="image/png" href="bfi.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#1f1715; --muted:#71615d; --paper:#fffaf7; --surface:#fff; --line:#eadbd2; --rose:#a7193f; --rose-dark:#66102b; --coral:#e85a3a; --gold:#d8a43a; --green:#147a57; --blue:#2558a8; --shadow:0 18px 50px rgba(87,31,27,.12); --radius:8px; }
+    * { box-sizing: border-box; }
+    body { margin:0; color:var(--ink); font-family:"Hind Siliguri","Inter",system-ui,sans-serif; background:radial-gradient(circle at top left,rgba(232,90,58,.16),transparent 34rem),linear-gradient(180deg,#fff5ee 0%,#fffaf7 48%,#f6efe9 100%); }
+    a { color:inherit; text-decoration:none; }
+    .container { width:min(1120px,calc(100% - 32px)); margin:0 auto; }
+    .topbar { position:sticky; top:0; z-index:10; background:rgba(255,250,247,.9); border-bottom:1px solid rgba(167,25,63,.12); backdrop-filter:blur(18px); }
+    .nav { min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:800; }
+    .brand-mark { width:190px; height:64px; display:grid; place-items:center; }
+    .brand-logo { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 8px 12px rgba(90,32,22,.16)); }
+    .nav-links { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .nav-links a { color:#3d302d; padding:10px 12px; border-radius:6px; font-weight:700; }
+    .nav-links a:hover, .nav-links a.active { background:#fff; color:var(--rose); }
+    .btn { border:1px solid transparent; border-radius:7px; min-height:42px; padding:10px 15px; display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font-weight:800; }
+    .btn-primary { color:#fff; background:linear-gradient(135deg,var(--rose),var(--rose-dark)); box-shadow:0 12px 28px rgba(167,25,63,.28); }
+    .hero { padding:58px 0 28px; }
+    .hero-panel { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:24px; align-items:center; padding:28px; border:1px solid var(--line); border-radius:var(--radius); background:rgba(255,255,255,.86); box-shadow:var(--shadow); }
+    .eyebrow { display:inline-flex; gap:8px; align-items:center; padding:8px 12px; border-radius:999px; background:#fff; border:1px solid var(--line); color:#69443f; font-weight:800; }
+    h1 { margin:16px 0 12px; font-size:clamp(2rem,4vw,3.6rem); line-height:1.08; letter-spacing:0; }
+    .lead { color:var(--muted); font-size:1.08rem; line-height:1.75; margin:0; }
+    .quick-card { background:linear-gradient(145deg,#fff,#fff4e6); border:1px solid var(--line); border-radius:var(--radius); padding:18px; }
+    .quick-card strong { display:block; color:var(--rose); font-size:1.2rem; margin-bottom:8px; }
+    section { padding:34px 0; }
+    .section-head { margin-bottom:18px; }
+    .section-head h2 { margin:0; font-size:clamp(1.45rem,2.4vw,2rem); }
+    .section-head p { color:var(--muted); margin:7px 0 0; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:18px; box-shadow:0 14px 34px rgba(87,31,27,.09); }
+    .card i { color:var(--rose); font-size:1.35rem; margin-bottom:10px; }
+    .card h3 { margin:0 0 8px; }
+    .card p { color:var(--muted); line-height:1.6; margin:0; }
+    .card a { color:var(--rose); font-weight:800; display:inline-flex; margin-top:12px; }
+    .faq { display:grid; gap:10px; }
+    details { background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; }
+    summary { cursor:pointer; font-weight:800; color:#4b3935; }
+    details p { color:var(--muted); line-height:1.65; margin:10px 0 0; }
+    .footer { margin-top:34px; background:#180d0f; color:#f8ece8; padding:30px 0; }
+    .footer-grid { display:grid; grid-template-columns:2fr 1fr 1fr; gap:18px; }
+    .footer a { color:#f8d7ca; display:block; margin:7px 0; }
+    .note { color:#f2d8ce; line-height:1.55; }
+    @media (max-width:760px) { .nav { justify-content:center; flex-wrap:wrap; padding:8px 0 12px; } .brand-mark { width:168px; height:56px; } .nav-links { justify-content:center; } .hero-panel, .grid, .footer-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="index.html">
+        <span class="brand-mark"><img class="brand-logo" src="bibah-bandhan-logo.png" alt="Bibah Bandhan logo"></span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="index.html#browse">Profiles</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#contact">Contact</a>
+        <a class="active" href="support.html">Support</a>
+        <a href="legal.html">Legal</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-panel">
+        <div>
+          <span class="eyebrow"><i class="fa-solid fa-headset"></i> Support Center</span>
+          <h1>আপনার প্রয়োজনে বিবাহ বন্ধন পাশে আছে</h1>
+          <p class="lead">প্রোফাইল যাচাই, পেমেন্ট, এজেন্ট সহায়তা, অভিযোগ বা মতামত নিয়ে দ্রুত যোগাযোগ করুন। জরুরি সহায়তার জন্য সরাসরি ফোন বা WhatsApp করুন।</p>
+        </div>
+        <div class="quick-card">
+          <strong>Quick Contact</strong>
+          <p class="lead">Phone: <a href="tel:+919064899089">+91 90648 99089</a></p>
+          <p class="lead">WhatsApp: <a href="https://wa.me/919064899089" target="_blank" rel="noopener noreferrer">Message Now</a></p>
+          <p class="lead">Office: Tapan, Dakshin Dinajpur, West Bengal - 733127</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="section-head">
+          <h2>Support Options</h2>
+          <p>যে বিষয়ে সাহায্য দরকার, সেই অনুযায়ী যোগাযোগ করুন।</p>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <i class="fa-solid fa-circle-check"></i>
+            <h3>Profile Verification</h3>
+            <p>কোনো প্রোফাইলের তথ্য, ছবি বা পরিচয় যাচাই করতে চাইলে অফিসে যোগাযোগ করুন।</p>
+            <a href="tel:+919064899089">Call for verification</a>
+          </article>
+          <article class="card">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <h3>Submit Complaint</h3>
+            <p>ভুল তথ্য, অনাকাঙ্ক্ষিত যোগাযোগ বা পেমেন্ট সংক্রান্ত সমস্যার জন্য অভিযোগ জানান।</p>
+            <a href="https://wa.me/919064899089?text=I%20want%20to%20submit%20a%20complaint" target="_blank" rel="noopener noreferrer">Submit on WhatsApp</a>
+          </article>
+          <article class="card">
+            <i class="fa-solid fa-comment-dots"></i>
+            <h3>Feedback</h3>
+            <p>সেবা উন্নত করার জন্য আপনার মতামত আমাদের কাছে গুরুত্বপূর্ণ।</p>
+            <a href="https://wa.me/919064899089?text=I%20want%20to%20share%20feedback" target="_blank" rel="noopener noreferrer">Send feedback</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="container">
+        <div class="section-head">
+          <h2>FAQ</h2>
+          <p>সাধারণ প্রশ্নের দ্রুত উত্তর।</p>
+        </div>
+        <div class="faq">
+          <details open>
+            <summary>বিবাহ বন্ধন কি বিবাহের নিশ্চয়তা দেয়?</summary>
+            <p>না। বিবাহ বন্ধন শুধুমাত্র পাত্র-পাত্রীর পরিচয় করিয়ে দেওয়ার একটি Marriage Bureau। সিদ্ধান্ত নেওয়ার আগে পরিবার ও ক্লায়েন্টকে নিজ দায়িত্বে যাচাই করতে হবে।</p>
+          </details>
+          <details>
+            <summary>প্রোফাইল তৈরি করতে কী কী তথ্য লাগে?</summary>
+            <p>নাম, বয়স, ঠিকানা, শিক্ষা, পেশা, পারিবারিক তথ্য, ছবি এবং প্রয়োজনীয় পরিচয়পত্রের তথ্য লাগতে পারে।</p>
+          </details>
+          <details>
+            <summary>পেমেন্ট সমস্যা হলে কী করব?</summary>
+            <p>পেমেন্ট রসিদ, তারিখ, মোবাইল নম্বর এবং প্রোফাইল আইডি সহ অফিস নম্বরে যোগাযোগ করুন।</p>
+          </details>
+          <details>
+            <summary>এজেন্ট হতে চাইলে কীভাবে আবেদন করব?</summary>
+            <p>মূল পেজে Agent Registration অপশন ব্যবহার করুন অথবা অফিস নম্বরে যোগাযোগ করুন।</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div>
+        <strong>বিবাহ বন্ধন</strong>
+        <p class="note">Trusted Marriage Bureau in West Bengal for bride and groom profile introductions.</p>
+      </div>
+      <div>
+        <strong>Pages</strong>
+        <a href="index.html">Home</a>
+        <a href="support.html">Support</a>
+        <a href="legal.html">Legal</a>
+      </div>
+      <div>
+        <strong>Contact</strong>
+        <a href="tel:+919064899089">+91 90648 99089</a>
+        <a href="https://wa.me/919064899089" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
