@@ -1,4 +1,5 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDTlWm8wC4oO1X7k_0xCZ_zqaUW2nJCUOTFnCj5ELIb44DRfP4h_tQw3m1eLO1Xw9Bog/exec";
+const FEATURED_PROFILE_LIMIT = 6;
 
 const state = {
   profiles: [],
@@ -168,7 +169,7 @@ function bindUi() {
   $("#quickSearch").addEventListener("submit", (event) => {
     event.preventDefault();
     applyFilters(new FormData(event.target));
-    document.getElementById("browse").scrollIntoView({ behavior: "smooth" });
+    document.getElementById("profiles")?.scrollIntoView({ behavior: "smooth" });
   });
   $("#sideFilters").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -216,7 +217,8 @@ async function api(action, payload = {}) {
 }
 
 async function loadPublicData() {
-  $("#cards").innerHTML = emptyMessage("Loading profiles...");
+  if ($("#cards")) $("#cards").innerHTML = emptyMessage("Loading profiles...");
+  if ($("#featuredCards")) $("#featuredCards").innerHTML = emptyMessage("Loading profiles...");
   try {
     const response = await fetch(`${SCRIPT_URL}?view=public&t=${Date.now()}`,{cache:"no-store"});
     const data = await response.json();
@@ -226,9 +228,12 @@ async function loadPublicData() {
     state.filtered = state.profiles.filter((profile) => profile.status === "verified" && String(profile.marriageStatus || "").toLowerCase() !== "completed");
     renderStats();
     renderCards(state.filtered);
+    applyUrlFilters();
     renderStories();
   } catch (error) {
-    $("#cards").innerHTML = emptyMessage(" সার্ভারের সাথে যোগাযোগ করা যাচ্ছে না। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।");
+    const message = emptyMessage(" সার্ভারের সাথে যোগাযোগ করা যাচ্ছে না। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।");
+    if ($("#cards")) $("#cards").innerHTML = message;
+    if ($("#featuredCards")) $("#featuredCards").innerHTML = message;
   }
 }
 
@@ -277,6 +282,17 @@ function applyFilters(formData) {
   renderCards(state.filtered);
 }
 
+function renderFeaturedCards(list) {
+  const featuredCards = $("#featuredCards");
+  if (!featuredCards) return;
+  const featured = cleanProfiles(list).slice(0, FEATURED_PROFILE_LIMIT);
+  featuredCards.innerHTML = "";
+  if (!featured.length) {
+    featuredCards.innerHTML = emptyMessage("No verified profiles found.");
+    return;
+  }
+  featured.forEach((profile) => featuredCards.appendChild(profileCard(profile)));
+}
 function renderCards(list) {
   const cards = $("#cards");
   list = cleanProfiles(list);
@@ -829,7 +845,7 @@ function openAgentIdCard(agent) {
     <div class="agent-id-card" id="agentIdPrintArea">
       <div class="id-header">
         <div class="id-brand">BB</div>
-        <div><h4>বিবাহ বন্ধন </h4><small>Authorized Field Agent</small></div>
+        <div><h4>বিবাহ বন্ধন 2026</h4><small>Authorized Field Agent</small></div>
       </div>
       <div class="id-body">
         ${photo ? `<img class="id-photo" src="${escapeAttr(photo)}" alt="">` : `<div class="id-photo avatar">${initials(agent.name)}</div>`}
@@ -1314,16 +1330,14 @@ function receiptTemplate(receipt) {
     <div class="receipt-paper receipt-4x6" id="receiptPrintArea">
       <div class="receipt-top">
         <div class="receipt-brand">
-          <img class="receipt-logo-img" src="bfi.png" alt="বিবাহ বন্ধন">
+          <div class="receipt-logo">BB</div>
           <div>
-            <h3>বিবাহ বন্ধন</h3>
-            <p>Marriage Bureau & Matrimonial Service</p>
-            <small>তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭</small>
-            <small>Mobile / WhatsApp: 9064899089</small>
+            <h3>বিবাহ বন্ধন 2026</h3>
+            <p>${isDebit ? "Debit Voucher" : "Money Receipt"}</p>
           </div>
         </div>
         <div class="receipt-no">
-          <span>${isDebit ? "Debit Voucher" : "Money Receipt"}</span>
+          <span>Receipt No</span>
           <strong>${escapeHtml(receipt.paymentId || "N/A")}</strong>
         </div>
       </div>
@@ -1345,13 +1359,8 @@ function receiptTemplate(receipt) {
         <p><span>Purpose</span><strong>${escapeHtml(receipt.purpose || "N/A")}</strong></p>
         <p><span>Received By</span><strong>${escapeHtml(receipt.receivedBy || "N/A")}</strong></p>
       </div>
-      <div class="receipt-office-note">
-        <strong>Office Record</strong>
-        <span>এই রসিদটি বিবাহ বন্ধন অফিসের payment record হিসেবে সংরক্ষিত থাকবে।</span>
-      </div>
-      <div class="receipt-footer receipt-footer-branded">
-        <div class="receipt-seal-box"><span>OFFICE<br>SEAL</span></div>
-        <div class="receipt-signature"><span>Receiver Signature</span></div>
+      <div class="receipt-footer single">
+        <div><span>Receiver Signature</span></div>
       </div>
     </div>`;
 }
@@ -1487,10 +1496,18 @@ function openDetails(profile) {
       </div>
     </div>` : "";
   const agreementScanUrl = profile.agreementScanUrl || profile.agreementScan || profile.agreementFile || profile.agreementFileUrl || "";
-  const agreementScanPanel = isLoggedIn && agreementScanUrl ? `
-    <div class="agreement-link-panel">
-      <strong>Uploaded Agreement Scan</strong>
-      <a class="document-link" href="${escapeAttr(agreementScanUrl)}" target="_blank" rel="noopener">Open link</a>
+  const agreementPanel = isLoggedIn ? `
+    <div class="detail-payment-panel">
+      <div class="detail-payment-summary">
+        <p><strong>₹${escapeHtml(profile.registrationFee || 0)}</strong><span>Registration Charge</span></p>
+        <p><strong>₹${escapeHtml(profile.meetingFee || 1000)}</strong><span>Meeting Charge</span></p>
+        <p><strong>₹${escapeHtml(profile.agreementAmount || profile.marriageFee || 0)}</strong><span>Marriage Service</span></p>
+      </div>
+      <div class="payment-mini-row">
+        <strong>Agreement Scan</strong>
+        ${agreementScanUrl ? `<a class="document-link" href="${escapeAttr(agreementScanUrl)}" target="_blank" rel="noopener">Open uploaded scan</a>` : `<span>No scan uploaded</span>`}
+        <em>${escapeHtml(profile.agreementNote || "")}</em>
+      </div>
     </div>` : "";
   $("#detailBody").innerHTML = `
     <div class="detail-hero">
@@ -1503,8 +1520,8 @@ function openDetails(profile) {
       </div>
     </div>
     ${paymentPanel}
+    ${agreementPanel}
     ${isLoggedIn ? `<div class="row-actions detail-actions"></div>` : ""}
-    ${agreementScanPanel}
     <div class="detail-list upgraded">${fields.map(([label, value]) => `<p><strong>${escapeHtml(label)}</strong>${formatDetailValue(value)}</p>`).join("")}</div>`;
   const detailActions = $(".detail-actions", $("#detailBody"));
   if (detailActions) {
@@ -1680,7 +1697,7 @@ function openAgreementPrint(profile) {
 
         <div class="agreement-logo-wrap">
           <img
-            src="bfi.png"
+            src="bibah-bandhan-logo.png"
             class="agreement-main-logo"
             alt="বিবাহ বন্ধন"
           >
@@ -1689,9 +1706,7 @@ function openAgreementPrint(profile) {
         <div class="agreement-header-text">
           <h1>বিবাহ বন্ধন</h1>
           <p>Marriage Bureau & Matrimonial Service</p>
-
-          <small>অফিস: তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭</small>
-          <small>মোবাইল / WhatsApp: 9064899089</small>
+          <small>Client Registration & Service Agreement</small>
         </div>
 
         <div class="agreement-id-box">
@@ -2010,7 +2025,7 @@ function openAgreementPrint(profile) {
       <div class="agreement-page-header">
 
         <img
-          src="bfi.png"
+          src="bibah-bandhan-logo.png"
           alt="বিবাহ বন্ধন"
         >
 
@@ -2228,12 +2243,10 @@ function openAgreementPrint(profile) {
            PAGE 3 : DECLARATION
       ========================== -->
 
-            <div class="agreement-final-page">
-
       <div class="agreement-page-header">
 
         <img
-          src="bfi.png"
+          src="bibah-bandhan-logo.png"
           alt="বিবাহ বন্ধন"
         >
 
@@ -2336,7 +2349,6 @@ function openAgreementPrint(profile) {
     Profile / Document Reference:
     ${escapeHtml(profile.id || "N/A")}
   </span>
-  <span>Office Address: তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭</span> <span>Mobile / WhatsApp: 9064899089</span>
 
   <div class="scan-line"></div>
 
@@ -2362,9 +2374,7 @@ function openAgreementPrint(profile) {
 
       </div>
 
-          </div>
-
-</div>
+    </div>
   `;
 
   $("#receiptSize").value = "a4";
@@ -2743,25 +2753,27 @@ function openPaymentModal(profile) {
   openModal("paymentModal");
 }
 
-function goToProfiles() {
-  const form = document.getElementById("quickSearch");
-  if (!form) {
-    window.location.href = "profile.html";
-    return;
-  }
+function applyUrlFilters() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.toString()) return;
 
-  const gender = form.querySelector('[name="gender"]')?.value || "";
-  const ageMin = form.querySelector('[name="ageMin"]')?.value || "";
-  const ageMax = form.querySelector('[name="ageMax"]')?.value || "";
-  const city = form.querySelector('[name="city"]')?.value || "";
-  const params = new URLSearchParams();
+  const quickForm = document.getElementById("quickSearch");
+  const sideForm = document.getElementById("sideFilters");
+  if (!quickForm) return;
 
-  if (gender) params.set("gender", gender);
-  if (ageMin) params.set("ageMin", ageMin);
-  if (ageMax) params.set("ageMax", ageMax);
-  if (city) params.set("city", city);
+  ["gender", "ageMin", "ageMax", "city"].forEach((key) => {
+    const value = params.get(key);
+    if (!value) return;
 
-  window.location.href = params.toString() ? `profile.html?${params.toString()}` : "profile.html";
+    const quickField = quickForm.querySelector(`[name="${key}"]`);
+    const sideField = sideForm?.querySelector(`[name="${key}"]`);
+
+    if (quickField) quickField.value = value;
+    if (sideField) sideField.value = value;
+  });
+
+  applyFilters(new FormData(quickForm));
+  document.getElementById("profiles")?.scrollIntoView({ behavior: "smooth" });
 }
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

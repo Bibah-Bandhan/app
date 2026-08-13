@@ -20,7 +20,8 @@ const PROFILE_HEADERS = [
   'prefAgeRange', 'prefHeight', 'prefLivelihood', 'prefIncomeType', 'about', 'photo', 'documentType', 'document',
   'specialRequirement', 'requirementUpdatedAt', 'requirementUpdatedBy',
   'verificationRemark', 'verificationUpdatedAt', 'verificationUpdatedBy',
-  'marriageStatus', 'marriageDate', 'marriedWithProfileId', 'marriedWithName', 'marriageNote', 'marriageCompletedAt', 'marriageCompletedBy'
+  'marriageStatus', 'marriageDate', 'marriedWithProfileId', 'marriedWithName', 'marriageNote', 'marriageCompletedAt', 'marriageCompletedBy',
+  'registrationFee', 'meetingFee', 'agreementAmount', 'marriageFee', 'agreementNote', 'agreementUpdatedAt', 'agreementUpdatedBy', 'agreementScanUrl', 'agreementScanUploadedAt', 'agreementScanUploadedBy'
 ];
 
 const AGENT_HEADERS = [
@@ -94,6 +95,8 @@ function doPost(e) {
     if (action === 'editProfile') return editProfile_(data);
     if (action === 'setProfileStatus') return setProfileStatus_(data);
     if (action === 'saveProfileNote') return saveProfileNote_(data);
+    if (action === 'saveServiceAgreement') return saveServiceAgreement_(data);
+    if (action === 'uploadAgreementScan') return uploadAgreementScan_(data);
     if (action === 'completeMarriage') return completeMarriage_(data);
     if (action === 'deleteProfile') return deleteProfile_(data);
     if (action === 'saveAgent') return saveAgent_(data);
@@ -278,6 +281,46 @@ function saveProfileNote_(data) {
   }
 
   return json_({ ok: true });
+}
+
+
+function saveServiceAgreement_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can save service agreements');
+
+  const sheet = getSheet_(PROFILE_SHEET, PROFILE_HEADERS);
+  const found = findById_(sheet, data.id);
+  const now = new Date();
+  const updates = Object.assign({}, found.item);
+
+  updates.registrationFee = Number(data.registrationFee || 0);
+  updates.meetingFee = Number(data.meetingFee || 0);
+  updates.agreementAmount = Number(data.agreementAmount || data.marriageFee || 0);
+  updates.marriageFee = updates.agreementAmount;
+  updates.agreementNote = data.agreementNote || '';
+  updates.agreementUpdatedAt = now;
+  updates.agreementUpdatedBy = session.name || 'Admin';
+
+  updateRow_(sheet, found.row, PROFILE_HEADERS, updates);
+  return json_({ ok: true, profile: updates });
+}
+
+function uploadAgreementScan_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can upload agreement scans');
+
+  const sheet = getSheet_(PROFILE_SHEET, PROFILE_HEADERS);
+  const found = findById_(sheet, data.id);
+  const updates = Object.assign({}, found.item);
+  const fileData = data.file || data.agreementScan || '';
+  if (!String(fileData).startsWith('data:')) throw new Error('Agreement scan file is required');
+
+  updates.agreementScanUrl = saveProfileFile_(fileData, found.item.id, found.item.fullName, 'agreement_scan');
+  updates.agreementScanUploadedAt = new Date();
+  updates.agreementScanUploadedBy = session.name || 'Admin';
+
+  updateRow_(sheet, found.row, PROFILE_HEADERS, updates);
+  return json_({ ok: true, url: updates.agreementScanUrl, profile: updates });
 }
 
 function completeMarriage_(data) {

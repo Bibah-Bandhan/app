@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" href="bfi.png">
   <title>বিবাহ বন্ধন </title>
-  <meta name="description" content="বিবাহ বন্ধন - Bengali matrimony profiles, agent dashboard and admin panel">
+  <meta name="description" content="বিবাহ বন্ধন 2026 - Bengali matrimony profiles, agent dashboard and admin panel">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
@@ -277,6 +277,8 @@
     .section-head h2 { margin: 0; font-size: clamp(1.45rem, 2.4vw, 2rem); }
     .section-head p { color: var(--muted); margin: 7px 0 0; }
     .browse-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; align-items: start; }
+    .featured-actions { display: flex; justify-content: center; margin-top: 18px; }
+    .profiles-page { background: rgba(255,255,255,.34); }
     .panel { padding: 16px; }
     .panel h3 { margin: 0 0 12px; }
     .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -649,6 +651,18 @@
     .detail-list p { margin: 0; padding: 10px; background: #fff8f4; border: 1px solid var(--line); border-radius: 7px; }
     .detail-list.upgraded p { background: #fff; border-color: #f0e2dc; box-shadow: 0 6px 16px rgba(87, 31, 27, .05); }
     .detail-list strong { display: block; color: var(--muted); font-size: .78rem; margin-bottom: 3px; }
+    .agreement-link-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 12px 0;
+      padding: 12px;
+      background: #fff8f4;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+    .agreement-link-panel strong { color: var(--brown); }
     .message-modal { z-index: 120; }
     .message-card { width: min(520px, 94vw); }
     .message-card .modal-body { padding: 24px 22px 22px; }
@@ -671,12 +685,10 @@
     .receipt-paper > * { position: relative; z-index: 1; }
     .receipt-paper.receipt-a4 { width: 190mm; min-height: 260mm; padding: 10mm; }
     .receipt-top { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; border-bottom: 2px solid var(--rose); padding-bottom: 7px; margin-bottom: 8px; }
-    .receipt-brand { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 9px; align-items: center; }
+    .receipt-brand { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 9px; align-items: center; }
     .receipt-logo { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: radial-gradient(circle at 32% 22%, #f6cf72, var(--rose) 58%, var(--rose-dark)); border: 2px solid #f4d6c7; font-family: "Inter", sans-serif; font-size: .86rem; font-weight: 900; box-shadow: 0 8px 18px rgba(167,25,63,.2); }
-    .receipt-logo-img { width: 62px; height: 44px; object-fit: contain; display: block; }
     .receipt-top h3 { margin: 0; color: var(--rose); font-size: 1.22rem; line-height: 1.08; }
-    .receipt-top p { margin: 3px 0 0; color: var(--muted); font-weight: 800; font-size: .72rem; }
-    .receipt-top small { display: block; margin-top: 2px; color: #806961; font-size: .54rem; line-height: 1.25; font-weight: 800; }
+    .receipt-top p { margin: 3px 0 0; color: var(--muted); font-weight: 800; font-size: .78rem; }
     .receipt-no { text-align: right; padding: 7px 8px; border: 1px solid #eadbd2; border-radius: 4px; background: #fff; }
     .receipt-no span, .receipt-grid span, .receipt-footer span, .receipt-amount span, .receipt-balance span { display: block; color: var(--muted); font-size: .66rem; font-weight: 900; text-transform: uppercase; }
     .receipt-no strong { display: block; margin-top: 2px; color: var(--rose-dark); font-size: .88rem; }
@@ -691,14 +703,8 @@
     .receipt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
     .receipt-grid p { margin: 0; padding: 7px; border: 1px solid #f0e2dc; border-radius: 4px; background: rgba(255,255,255,.88); min-height: 47px; }
     .receipt-grid strong { display: block; margin-top: 2px; font-size: .84rem; line-height: 1.25; overflow-wrap: anywhere; }
-    .receipt-office-note { margin-top: 8px; padding: 7px 8px; border: 1px dashed #d8a43a; border-radius: 4px; background: #fffaf0; color: #6c4a42; }
-    .receipt-office-note strong { display: block; color: var(--rose-dark); font-size: .66rem; text-transform: uppercase; letter-spacing: .04em; }
-    .receipt-office-note span { display: block; margin-top: 2px; font-size: .66rem; line-height: 1.35; }
     .receipt-footer.single { display: grid; grid-template-columns: minmax(0, 1fr); margin-top: .9in; }
-    .receipt-footer-branded { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 18px; align-items: end; margin-top: 20px; }
-    .receipt-seal-box { width: 74px; height: 74px; border: 1px dashed var(--rose); border-radius: 50%; display: grid; place-items: center; color: rgba(167,25,63,.65); text-align: center; font-size: .58rem; font-weight: 900; line-height: 1.15; }
-    .receipt-signature { border-top: 1px solid #8d7b74; padding-top: 7px; min-height: 48px; text-align: right; }
-    .receipt-footer div { box-sizing: border-box; }
+    .receipt-footer div { border-top: 1px solid #8d7b74; padding-top: 7px; min-height: 48px; text-align: right; }
     .receipt-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 14px; }
     .receipt-actions select { width: auto; min-width: 130px; }
     @media print {
@@ -1728,13 +1734,13 @@
 
 .agreement-client-layout {
   display: grid;
-  grid-template-columns: 155px 1fr;
-  gap: 16px;
+  grid-template-columns: 125px 1fr;
+  gap: 14px;
 }
 
 .agreement-client-photo {
-  width: 155px;
-  height: 190px;
+  width: 125px;
+  height: 155px;
   border: 2px solid #d8a43a;
   border-radius: 6px;
   overflow: hidden;
@@ -1820,11 +1826,8 @@
 
 .service-charge-table {
   width: 100%;
-  min-width: 0 !important;
   border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 10px;
-  max-width: 100%;
+  font-size: 9px;
 }
 
 .service-charge-table th {
@@ -1836,29 +1839,13 @@
 
 .service-charge-table td {
   border: 1px solid #eadbd2;
-  padding: 7px 6px;
+  padding: 7px 5px;
   text-align: center;
   vertical-align: middle;
-  overflow-wrap: anywhere;
 }
 
 .service-charge-table td:nth-child(2) {
   text-align: left;
-}
-
-.service-charge-table th:nth-child(1),
-.service-charge-table td:nth-child(1) {
-  width: 14%;
-}
-
-.service-charge-table th:nth-child(2),
-.service-charge-table td:nth-child(2) {
-  width: 56%;
-}
-
-.service-charge-table th:nth-child(3),
-.service-charge-table td:nth-child(3) {
-  width: 30%;
 }
 
 .service-charge-table td strong {
@@ -2042,46 +2029,6 @@
   color: #a7193f;
 }
 
-
-.agreement-final-page {
-  min-height: 266mm;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 2;
-}
-
-.agreement-final-page .agreement-title-box {
-  margin-bottom: 14px;
-}
-
-.agreement-final-page .declaration-box {
-  padding: 16px 18px;
-}
-
-.agreement-final-page .declaration-box p {
-  font-size: 12px;
-  line-height: 1.72;
-  margin-bottom: 12px;
-}
-
-.agreement-final-page .agreement-record-box {
-  margin-top: 18px;
-}
-
-.agreement-final-page .signature-grid {
-  margin-top: 30px;
-  gap: 26px 36px;
-}
-
-.agreement-final-page .scan-box-new {
-  margin-top: auto;
-  padding: 12px 14px;
-}
-
-.agreement-final-page .agreement-footer {
-  margin-top: 14px;
-}
 .agreement-watermark {
   position: absolute;
   z-index: 0;
@@ -2101,12 +2048,13 @@
 @media print {
 
   .agreement-paper {
-    width: 190mm !important;
-    min-height: 277mm !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
     margin: 0 auto !important;
-    padding: 10mm !important;
+    padding: 8mm !important;
     box-shadow: none !important;
     border: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .agreement-page-break {
@@ -2114,6 +2062,179 @@
     page-break-before: always !important;
   }
 
+}
+
+.agreement-paper {
+  width: 210mm !important;
+  min-height: 297mm !important;
+  padding: 8mm !important;
+  box-sizing: border-box;
+}
+
+.agreement-paper::after {
+  inset: 5mm;
+}
+
+.agreement-header {
+  grid-template-columns: 112px 1fr 165px;
+  gap: 13px;
+  padding-bottom: 11px;
+}
+
+.agreement-main-logo {
+  width: 108px;
+  height: 66px;
+}
+
+.agreement-header-text h1 {
+  font-size: 28px;
+}
+
+.agreement-header-text p {
+  font-size: 13px;
+}
+
+.agreement-header-text small {
+  font-size: 10.5px;
+}
+
+.agreement-title-box {
+  margin: 11px 0;
+  padding: 9px;
+}
+
+.agreement-title-box h2 {
+  font-size: 19px;
+}
+
+.agreement-title-box p {
+  font-size: 11px;
+}
+
+.agreement-client-layout {
+  grid-template-columns: 130px 1fr;
+  gap: 12px;
+}
+
+.agreement-client-photo {
+  width: 130px;
+  height: 160px;
+}
+
+.agreement-client-details {
+  gap: 6px;
+}
+
+.agreement-field {
+  min-height: 42px;
+  padding: 6px 8px;
+}
+
+.agreement-id-box span,
+.agreement-field span,
+.agreement-record-box span {
+  font-size: 8.8px;
+}
+
+.agreement-field strong,
+.agreement-record-box strong {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.agreement-section {
+  margin-top: 10px;
+}
+
+.agreement-section h3 {
+  font-size: 13px;
+  padding: 5px 8px;
+  margin-bottom: 6px;
+}
+
+.agreement-section p {
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.agreement-terms {
+  padding-left: 18px;
+}
+
+.agreement-terms li {
+  margin-bottom: 4px;
+  font-size: 10.6px;
+  line-height: 1.42;
+}
+
+.service-charge-table {
+  font-size: 10px;
+}
+
+.service-charge-table th,
+.service-charge-table td {
+  padding: 6px 5px;
+}
+
+.service-charge-table td small {
+  font-size: 8px;
+}
+
+.agreement-important-note {
+  margin-top: 8px;
+  padding: 7px;
+  font-size: 10px;
+  line-height: 1.42;
+}
+
+.agreement-page-header {
+  grid-template-columns: 58px 1fr auto;
+  padding-bottom: 8px;
+}
+
+.agreement-page-header img {
+  width: 54px;
+  height: 38px;
+}
+
+.agreement-page-header strong {
+  font-size: 15px;
+}
+
+.agreement-page-header span {
+  font-size: 9px;
+}
+
+.declaration-box {
+  padding: 12px;
+}
+
+.declaration-box p {
+  font-size: 12px;
+  line-height: 1.62;
+  margin-bottom: 8px;
+}
+
+.signature-grid {
+  gap: 26px 34px;
+  margin-top: 30px;
+}
+
+.signature-box strong {
+  font-size: 11px;
+}
+
+.signature-box span {
+  font-size: 9px;
+}
+
+.scan-box-new {
+  margin-top: 20px;
+}
+
+.agreement-footer {
+  margin-top: 18px;
+  font-size: 8px;
 }
 
     @media (max-width: 980px) {
@@ -2378,6 +2499,9 @@
       .hero-floating-profile span { font-size: .92rem; }
       .hero-floating-profile small { display: none; }
     }
+    .profile-only-page > .public-view:not(#profiles):not(.quick-search) { display: none !important; }
+    .profile-only-page .quick-search { display: block !important; margin-top: 0; padding: 28px 0 16px; }
+    .profile-only-page #profiles { padding-top: 18px; min-height: calc(100vh - 76px); }
     .receipt-actions select { display: none !important; }
     .agreement-paper {
       width: 190mm !important;
@@ -2395,8 +2519,8 @@
     .agreement-title-box { margin: 10px 0; padding: 9px; }
     .agreement-title-box h2 { font-size: 19px; }
     .agreement-title-box p { font-size: 11px; }
-    .agreement-client-layout { grid-template-columns: 150px minmax(0, 1fr); gap: 12px; }
-    .agreement-client-photo { width: 150px; height: 185px; }
+    .agreement-client-layout { grid-template-columns: 130px minmax(0, 1fr); gap: 12px; }
+    .agreement-client-photo { width: 130px; height: 160px; }
     .agreement-field { min-height: 40px; padding: 6px 8px; box-sizing: border-box; }
     .agreement-field span, .agreement-id-box span, .agreement-record-box span { font-size: 8.8px; }
     .agreement-field strong, .agreement-record-box strong { font-size: 11px; line-height: 1.32; }
@@ -2405,7 +2529,7 @@
     .agreement-section p { font-size: 11px; line-height: 1.5; }
     .agreement-terms { padding-left: 18px; }
     .agreement-terms li { font-size: 10.6px; line-height: 1.38; margin-bottom: 4px; }
-    .service-charge-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; font-size: 11px; }
+    .service-charge-table { width: 100% !important; max-width: 100% !important; table-layout: fixed !important; font-size: 11px; }
     .service-charge-table th, .service-charge-table td { padding: 8px 7px; box-sizing: border-box; overflow-wrap: anywhere; }
     .service-charge-table th:nth-child(1), .service-charge-table td:nth-child(1) { width: 14%; }
     .service-charge-table th:nth-child(2), .service-charge-table td:nth-child(2) { width: 56%; text-align: left; }
@@ -2416,10 +2540,6 @@
     .declaration-box p { font-size: 12px; line-height: 1.6; }
     .signature-box strong { font-size: 11px; }
     .signature-box span { font-size: 9px; }
-    .agreement-final-page { min-height: 258mm; }
-    .agreement-final-page .declaration-box p { font-size: 11.5px; line-height: 1.55; }
-    .agreement-final-page .signature-grid { margin-top: 24px; gap: 22px 32px; }
-    .agreement-final-page .scan-box-new { padding: 10px 12px; }
     .agreement-footer { font-size: 8px; margin-top: 18px; }
     @media print {
       body[data-print-mode="receipt"] #receiptPrintArea { width: 4in !important; min-height: 5.82in !important; }
@@ -2429,7 +2549,6 @@
     .agreement-paper .service-charge-table {
       display: table !important;
       width: 100% !important;
-      min-width: 0 !important;
       max-width: 100% !important;
       margin: 0 !important;
       border-collapse: collapse !important;
@@ -2483,15 +2602,15 @@
 <body class="bn protect-page">
   <header class="topbar">
     <div class="container nav">
-      <a class="brand" href="#home">
+      <a class="brand" href="index.html#home">
         <span class="brand-mark"><img class="brand-logo" src="bibah-bandhan-logo.png" alt="বিবাহ বন্ধন logo"></span>
         <span class="brand-text-hidden">বিবাহ বন্ধন</span>
       </a>
       <nav class="nav-links" aria-label="Main navigation">
         <a href="profile.html">Profiles</a>
-        <a href="#about">About</a>
-        <a href="#stories">Stories</a>
-        <a href="#contact">Contact</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#stories">Stories</a>
+        <a href="index.html#contact">Contact</a>
         <a href="support.html">Support</a>
         <a href="legal.html">Legal</a>
         <div class="login-dropdown">
@@ -2508,15 +2627,15 @@
     </div>
   </header>
 
-  <main id="home">
+  <main id="home" class="profile-only-page">
     <section class="hero public-view">
       <div class="container hero-grid">
         <div class="hero-copy" aria-hidden="true"></div>
         <div class="hero-slideshow" aria-label="বিবাহ বন্ধন slideshow">
-          <div class="hero-slide"><img src="p1.png" alt="বিবাহ বন্ধন matrimonial banner"></div>
-          <div class="hero-slide"><img src="p2.png" alt="বিবাহ বন্ধন wedding banner"></div>
-          <div class="hero-slide"><img src="p3.png" alt="বিবাহ বন্ধন family banner"></div>
-          <div class="hero-slide"><img src="p4.png" alt="বিবাহ বন্ধন service banner"></div>
+          <div class="hero-slide"><img src="ChatGPT Image Jul 5, 2026, 12_37_48 PM.png" alt="বিবাহ বন্ধন matrimonial banner"></div>
+          <div class="hero-slide"><img src="ChatGPT Image Jul 5, 2026, 12_41_22 PM.png" alt="বিবাহ বন্ধন wedding banner"></div>
+          <div class="hero-slide"><img src="ChatGPT Image Jul 5, 2026, 12_57_09 PM.png" alt="বিবাহ বন্ধন family banner"></div>
+          <div class="hero-slide"><img src="ChatGPT Image Jul 5, 2026, 12_57_37 PM.png" alt="বিবাহ বন্ধন service banner"></div>
           <button class="hero-floating-profile" type="button" data-open-profile>
             <span>প্রোফাইল তৈরি</span>
             <small>আজই রেজিস্ট্রেশন করুন</small>
@@ -2548,7 +2667,23 @@
         <div class="section-head">
           <div>
             <h2>Featured Profiles</h2>
-            <p>Only verified profiles are visible publicly.</p>
+            <p>হোম পেজে বাছাই করা কয়েকটি verified profile দেখানো হচ্ছে।</p>
+          </div>
+          <a class="btn btn-soft" href="#profiles">সব প্রোফাইল দেখুন</a>
+        </div>
+        <div id="featuredCards" class="cards"></div>
+        <div class="featured-actions">
+          <a class="btn btn-primary" href="profile.html">আরও প্রোফাইল দেখুন</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="profiles" class="public-view profiles-page">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <h2>All Profiles</h2>
+            <p>শুধুমাত্র verified profiles এখানে দেখা যাবে।</p>
           </div>
           <button class="btn btn-soft" type="button" id="resetFilters">Reset Filters</button>
         </div>
@@ -2569,7 +2704,6 @@
         </div>
       </div>
     </section>
-
     <section id="stories" class="public-view">
       <div class="container">
         <div class="section-head">
@@ -2612,6 +2746,7 @@
       </div>
     </div>
 
+```
 <div class="work-grid">
 
   <article class="work-card" data-step="1">
@@ -2642,6 +2777,7 @@
   </article>
 
 </div>
+```
 
   </div>
 </section>
@@ -2973,10 +3109,10 @@
       <!-- Column 2: Quick Pages -->
       <div>
         <strong>Pages</strong>
-        <a href="#home">Home</a>
-        <a href="#browse">Profiles</a>
-        <a href="#about">About</a>
-        <a href="#contact">Contact</a>
+        <a href="index.html#home">Home</a>
+        <a href="profile.html">Profiles</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#contact">Contact</a>
       </div>
 
       <!-- Column 3: Access & Portals -->
@@ -3075,8 +3211,8 @@
 </div>
 
   <nav class="mobile-bottom-nav public-view" aria-label="Mobile navigation">
-    <a href="#home"><strong class="mobile-nav-icon"><i class="fas fa-home"></i></strong></a>
-    <a href="#browse"><strong class="mobile-nav-icon"><i class="fas fa-heart"></i></strong></a>
+    <a href="index.html#home"><strong class="mobile-nav-icon"><i class="fas fa-home"></i></strong></a>
+    <a href="profile.html"><strong class="mobile-nav-icon"><i class="fas fa-heart"></i></strong></a>
     <button type="button" data-open-profile><strong class="mobile-nav-icon"><i class="fas fa-user-plus"></i></strong></button>
     <button type="button" data-open-login="agent"><strong class="mobile-nav-icon"><i class="fas fa-user-tie"></i></strong></button>
     <button type="button" data-open-login="admin"><strong class="mobile-nav-icon"><i class="fas fa-shield-halved"></i></strong></button>
@@ -3354,6 +3490,63 @@
     </div>
   </div>
 
+  <div class="modal" id="serviceAgreementModal" aria-hidden="true">
+    <div class="modal-card message-card">
+      <div class="modal-head">
+        <h3>Service Charge Agreement</h3>
+        <button class="btn btn-icon btn-soft" type="button" data-close-modal>×</button>
+      </div>
+      <div class="modal-body">
+        <form id="serviceAgreementForm">
+          <p class="note" id="serviceAgreementClient"></p>
+          <div class="field">
+            <label>Registration Charge</label>
+            <input type="number" name="registrationFee" min="0" step="1">
+          </div>
+          <div class="field">
+            <label>Meeting / Introduction Charge</label>
+            <input type="number" name="meetingFee" min="0" step="1">
+          </div>
+          <div class="field">
+            <label>Marriage Service Agreement Amount</label>
+            <input type="number" name="agreementAmount" min="0" step="1" required>
+          </div>
+          <div class="field">
+            <label>Agreement Note</label>
+            <textarea name="agreementNote" rows="4" placeholder="Agreement note"></textarea>
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-soft" type="button" data-close-modal>Cancel</button>
+            <button class="btn btn-primary" type="submit">Save Agreement</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="agreementUploadModal" aria-hidden="true">
+    <div class="modal-card message-card">
+      <div class="modal-head">
+        <h3>Upload Agreement Scan</h3>
+        <button class="btn btn-icon btn-soft" type="button" data-close-modal>×</button>
+      </div>
+      <div class="modal-body">
+        <form id="agreementUploadForm">
+          <p class="note" id="agreementUploadClient"></p>
+          <div class="field">
+            <label for="agreementScanFile">Agreement Scan File</label>
+            <input id="agreementScanFile" name="agreementScanFile" type="file" accept="image/*,.pdf" required>
+            <small class="form-note">Upload scanned agreement image or PDF.</small>
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-soft" type="button" data-close-modal>Cancel</button>
+            <button class="btn btn-primary" type="submit">Upload File</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
 
   <div class="modal" id="receiptModal" aria-hidden="true">
     <div class="modal-card" style="width:min(720px, 96vw)">
@@ -3436,62 +3629,6 @@
     </div>
   </div>
 
-  <div class="modal" id="serviceAgreementModal" aria-hidden="true">
-    <div class="modal-card message-card">
-      <div class="modal-head">
-        <h3>Service Charge Agreement</h3>
-        <button class="btn btn-icon btn-soft" type="button" data-close-modal>×</button>
-      </div>
-      <div class="modal-body">
-        <form id="serviceAgreementForm" class="form-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
-          <p class="note full" id="serviceAgreementClient"></p>
-          <div class="field">
-            <label>Registration Charge</label>
-            <input name="registrationFee" type="number" min="0" step="1" value="0">
-          </div>
-          <div class="field">
-            <label>Meeting Charge</label>
-            <input name="meetingFee" type="number" min="0" step="1" value="1000">
-          </div>
-          <div class="field full">
-            <label>Marriage / Service Charge</label>
-            <input name="agreementAmount" type="number" min="0" step="1" required>
-          </div>
-          <div class="field full">
-            <label>Agreement Note</label>
-            <textarea name="agreementNote" rows="4" placeholder="Service charge note"></textarea>
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-soft" type="button" data-close-modal>Close</button>
-            <button class="btn btn-primary" type="submit">Save Agreement</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal" id="agreementUploadModal" aria-hidden="true">
-    <div class="modal-card message-card">
-      <div class="modal-head">
-        <h3>Upload Agreement Scan</h3>
-        <button class="btn btn-icon btn-soft" type="button" data-close-modal>×</button>
-      </div>
-      <div class="modal-body">
-        <form id="agreementUploadForm">
-          <p class="note" id="agreementUploadClient"></p>
-          <div class="field">
-            <label>Agreement Scan File</label>
-            <input name="agreementScanFile" type="file" accept="image/*,.pdf" required>
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-soft" type="button" data-close-modal>Close</button>
-            <button class="btn btn-primary" type="submit">Upload Scan</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
   <div class="modal" id="agentDetailModal" aria-hidden="true">
     <div class="modal-card" style="width:min(820px,96vw)">
       <div class="modal-head">
@@ -3522,7 +3659,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="index.js?v=20260811-3"></script>
+  <script src="profile.js?v=20260811-3"></script>
 </body>
 </html>
-

@@ -1,8 +1,10 @@
-const CACHE_NAME = "bibah-bandhan-v6-20260711";
+const CACHE_NAME = "bibah-bandhan-v8-20260801";
 
 const urlsToCache = [
   "./",
   "./index.html",
+  "./support.html",
+  "./legal.html",
   "./index.js",
   "./manifest.json",
   "./bibah-bandhan-logo.png",
@@ -36,6 +38,8 @@ self.addEventListener("fetch", event => {
   const isAppShell = url.origin === self.location.origin && (
     url.pathname.endsWith("/") ||
     url.pathname.endsWith("/index.html") ||
+    url.pathname.endsWith("/support.html") ||
+    url.pathname.endsWith("/legal.html") ||
     url.pathname.endsWith("/index.js") ||
     url.pathname.endsWith("/manifest.json")
   );
