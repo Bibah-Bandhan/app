@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDTlWm8wC4oO1X7k_0xCZ_zqaUW2nJCUOTFnCj5ELIb44DRfP4h_tQw3m1eLO1Xw9Bog/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4gQHKykWExnU_dkGSEl-2fMY-7pkpe5-BblvTIZDLAvW5n2fmmEIDO-2-wUhmQHb37w/exec";
 const FEATURED_PROFILE_LIMIT = 6;
 
 const state = {
@@ -6,6 +6,7 @@ const state = {
   agents: [],
   payments: [],
   agentPayouts: [],
+  commonExpenses: [],
   stories: [],
   filtered: [],
   session: null,
@@ -189,6 +190,7 @@ function bindUi() {
   if ($("#agentRegisterForm")) $("#agentRegisterForm").addEventListener("submit", submitAgentRegister);
   if ($("#myAccountForm")) $("#myAccountForm").addEventListener("submit", submitMyAccount);
   if ($("#agentPayoutForm")) $("#agentPayoutForm").addEventListener("submit", submitAgentPayout);
+  if ($("#commonExpenseForm")) $("#commonExpenseForm").addEventListener("submit", submitCommonExpense);
   if ($("#agentIdCardBtn")) $("#agentIdCardBtn").addEventListener("click", () => openAgentIdCard(state.currentAgent));
   if ($("#printAgentIdBtn")) $("#printAgentIdBtn").addEventListener("click", printAgentIdCard);
   $$("[data-open-agent-register]").forEach((button) => button.addEventListener("click", (event) => {
@@ -253,6 +255,7 @@ async function loadDashboardData() {
   state.agents = cleanAgents(result.agents || []);
   state.payments = cleanPayments(result.payments || []);
   state.agentPayouts = cleanAgentPayouts(result.agentPayouts || []);
+  state.commonExpenses = cleanCommonExpenses(result.commonExpenses || []);
   state.currentAgent = result.currentAgent || null;
   state.stories = cleanStories(result.stories || []);
   renderAgentDashboardPhoto(state.currentAgent);
@@ -456,7 +459,7 @@ function renderAgentDashboardPhoto(agent) {
 function renderTabs() {
   const tabs = $("#dashboardTabs");
   const items = state.session.role === "admin"
-    ? [["profiles", "Profiles"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agents", "Agents"], ["agentPayouts", "Agent Payouts"], ["agentForm", "Create Agent"], ["stories", "Stories"]]
+    ? [["profiles", "Profiles"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agents", "Agents"], ["agentPayouts", "Agent Payouts"], ["commonExpenses", "Common Expenses"], ["agentForm", "Create Agent"], ["stories", "Stories"]]
     : [["profiles", "My Clients"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agentPayouts", "My Payouts"], ["myAccount", "My Account"]];
   tabs.innerHTML = "";
   items.forEach(([key, label]) => {
@@ -497,6 +500,7 @@ function renderDashboard() {
   $("#agentTools").classList.toggle("hidden", !(state.activeTab === "agentForm" && state.session.role === "admin"));
   $("#myAccountTools")?.classList.toggle("hidden", !(state.activeTab === "myAccount" && state.session.role === "agent"));
   $("#agentPayoutTools")?.classList.toggle("hidden", !(state.activeTab === "agentPayouts" && state.session.role === "admin"));
+  $("#commonExpenseTools")?.classList.toggle("hidden", !(state.activeTab === "commonExpenses" && state.session.role === "admin"));
 
   if (state.activeTab === "payments") {
     renderPaymentTable();
@@ -763,6 +767,38 @@ function renderAgentPayoutTable() {
   });
 }
 
+
+function renderCommonExpenseTable() {
+  const expenses = cleanCommonExpenses(state.commonExpenses || []);
+  const total = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  $("#tableHead").innerHTML = `<tr><th>ID</th><th>Date</th><th>Category</th><th>Amount</th><th>Meter / Month</th><th>Mode</th><th>Paid To</th><th>Note</th><th>Recorded By</th></tr>`;
+  const body = $("#tableBody");
+  body.innerHTML = "";
+  if (!expenses.length) {
+    body.innerHTML = `<tr><td colspan="9">No common expenses yet.</td></tr>`;
+    return;
+  }
+  expenses.forEach((expense) => {
+    const meterInfo = expense.category === "Electricity"
+      ? `${escapeHtml(expense.meterName || "Meter")}<br><span class="note">${escapeHtml(expense.previousReading || "0")} → ${escapeHtml(expense.currentReading || "0")} = ${escapeHtml(expense.units || "0")} unit @ ₹${escapeHtml(expense.ratePerUnit || "0")}</span>`
+      : escapeHtml(expense.roomRentMonth || "");
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(expense.expenseId || "")}</td>
+      <td>${escapeHtml(formatDate(expense.expenseDate) || expense.expenseDate || "")}</td>
+      <td>${escapeHtml(expense.category || "")}</td>
+      <td><strong class="amount-debit">-₹${escapeHtml(expense.amount || "0")}</strong></td>
+      <td>${meterInfo}</td>
+      <td>${escapeHtml(expense.mode || "")}</td>
+      <td>${escapeHtml(expense.paidTo || "")}</td>
+      <td>${escapeHtml(expense.note || "")}</td>
+      <td>${escapeHtml(expense.recordedByName || expense.recordedByRole || "")}</td>`;
+    body.appendChild(tr);
+  });
+  const summary = document.createElement("tr");
+  summary.innerHTML = `<td colspan="3"><strong>Total Common Expense</strong></td><td><strong class="amount-debit">-₹${escapeHtml(total)}</strong></td><td colspan="5"></td>`;
+  body.prepend(summary);
+}
 function renderMyAccountView() {
   $("#tableHead").innerHTML = "";
   const body = $("#tableBody");
@@ -913,6 +949,30 @@ async function submitAgentPayout(event) {
   }
 }
 
+
+async function submitCommonExpense(event) {
+  event.preventDefault();
+  if (!state.session || state.session.role !== "admin") return toast("Only admin can save common expenses");
+  const form = event.target;
+  const button = form.querySelector("button[type='submit']");
+  button.disabled = true;
+  button.textContent = "Saving...";
+  try {
+    const payload = Object.fromEntries(new FormData(form).entries());
+    payload.token = state.session.token;
+    const result = await api("saveCommonExpense", payload);
+    if (!result.ok) throw new Error(result.error || "Expense save failed");
+    toast("Common expense saved");
+    form.reset();
+    if (form.expenseDate) form.expenseDate.value = new Date().toISOString().slice(0, 10);
+    await loadDashboardData();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save Expense";
+  }
+}
 async function submitMyAccount(event) {
   event.preventDefault();
   const button = event.target.querySelector("button[type='submit']");
@@ -990,6 +1050,14 @@ function cleanAgentPayouts(list) {
   );
 }
 
+
+function cleanCommonExpenses(list) {
+  return (Array.isArray(list) ? list : []).filter((expense) =>
+    String(expense?.expenseId || "").trim() ||
+    String(expense?.category || "").trim() ||
+    String(expense?.amount || "").trim()
+  );
+}
 function cleanProfiles(list) {
   return (Array.isArray(list) ? list : []).filter((profile) =>
     String(profile?.id || "").trim() ||
@@ -1332,8 +1400,9 @@ function receiptTemplate(receipt) {
         <div class="receipt-brand">
           <div class="receipt-logo">BB</div>
           <div>
-            <h3>বিবাহ বন্ধন 2026</h3>
-            <p>${isDebit ? "Debit Voucher" : "Money Receipt"}</p>
+            <h3>বিবাহ বন্ধন</h3>
+            <p>Marriage Bureau Office</p>
+            <small>Registration No.: 1852</small>
           </div>
         </div>
         <div class="receipt-no">
@@ -1705,8 +1774,8 @@ function openAgreementPrint(profile) {
 
         <div class="agreement-header-text">
           <h1>বিবাহ বন্ধন</h1>
-          <p>Marriage Bureau & Matrimonial Service</p>
-          <small>Client Registration & Service Agreement</small>
+          <p>Marriage Bureau Office</p>
+          <small>Registration No.: 1852</small>
         </div>
 
         <div class="agreement-id-box">
@@ -2270,22 +2339,22 @@ function openAgreementPrint(profile) {
 
       <div class="declaration-box">
 
-        <p>
-          আমি ${escapeHtml(profile.fullName || "________________")}
-          ঘোষণা করছি যে, আমি এই Agreement-এর সমস্ত তথ্য,
-          শর্তাবলী এবং Service Charge সম্পর্কে অবগত হয়েছি।
-        </p>
-
-        <p>
-          আমি স্বেচ্ছায় এই Agreement গ্রহণ করছি এবং আমার
-          দেওয়া তথ্য সঠিক বলে নিশ্চিত করছি।
-        </p>
-
-        <p>
-          ভবিষ্যতে কোনো পরিচয়, সম্পর্ক, আর্থিক লেনদেন বা
-          বিবাহ সংক্রান্ত সিদ্ধান্ত নেওয়ার আগে আমি নিজ দায়িত্বে
-          প্রয়োজনীয় যাচাই করব।
-        </p>
+        <ol class="declaration-list">
+          <li>
+            আমি ${escapeHtml(profile.fullName || "________________")}
+            ঘোষণা করছি যে, আমি এই Agreement-এর সমস্ত তথ্য,
+            শর্তাবলী এবং Service Charge সম্পর্কে অবগত হয়েছি।
+          </li>
+          <li>
+            আমি স্বেচ্ছায় এই Agreement গ্রহণ করছি এবং আমার
+            দেওয়া তথ্য সঠিক বলে নিশ্চিত করছি।
+          </li>
+          <li>
+            ভবিষ্যতে কোনো পরিচয়, সম্পর্ক, আর্থিক লেনদেন বা
+            বিবাহ সংক্রান্ত সিদ্ধান্ত নেওয়ার আগে আমি নিজ দায়িত্বে
+            প্রয়োজনীয় যাচাই করব।
+          </li>
+        </ol>
 
       </div>
 
@@ -2785,3 +2854,12 @@ if ("serviceWorker" in navigator) {
       .catch(err => console.log(err));
   });
 }
+
+
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-﻿const SPREADSHEET_ID = '1pYPjdSmcSfAJMYN9_2SQPxB6NKKMFhmwmB4RW1zb0ZA';
+const SPREADSHEET_ID = '1pYPjdSmcSfAJMYN9_2SQPxB6NKKMFhmwmB4RW1zb0ZA';
 const PROFILE_FOLDER_ID = '1l-wRHxqaqxW_6uXdKQzgdcXlJsOw0DDN';
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = '572594';
@@ -9,6 +9,7 @@ const SESSION_SHEET = 'Sessions';
 const PAYMENT_SHEET = 'Payments';
 const AGENT_PAYOUT_SHEET = 'AgentPayouts';
 const STORY_SHEET = 'Stories';
+const COMMON_EXPENSE_SHEET = 'CommonExpenses';
 
 const PROFILE_HEADERS = [
   'id', 'timestamp', 'status', 'agentId', 'fullName', 'profileFor', 'gender', 'dob', 'age',
@@ -21,7 +22,8 @@ const PROFILE_HEADERS = [
   'specialRequirement', 'requirementUpdatedAt', 'requirementUpdatedBy',
   'verificationRemark', 'verificationUpdatedAt', 'verificationUpdatedBy',
   'marriageStatus', 'marriageDate', 'marriedWithProfileId', 'marriedWithName', 'marriageNote', 'marriageCompletedAt', 'marriageCompletedBy',
-  'registrationFee', 'meetingFee', 'agreementAmount', 'marriageFee', 'agreementNote', 'agreementUpdatedAt', 'agreementUpdatedBy', 'agreementScanUrl', 'agreementScanUploadedAt', 'agreementScanUploadedBy'
+  'registrationFee', 'meetingFee', 'agreementAmount', 'marriageFee', 'agreementNote', 'agreementUpdatedAt', 'agreementUpdatedBy', 'agreementScanUrl', 'agreementScanUploadedAt', 'agreementScanUploadedBy',
+  'otherDocuments', 'otherDocumentUploadedAt', 'otherDocumentUploadedBy'
 ];
 
 const AGENT_HEADERS = [
@@ -49,13 +51,18 @@ const PAYMENT_HEADERS = [
 const STORY_HEADERS = [
   'id', 'timestamp', 'status', 'coupleName', 'location', 'matchDate', 'story', 'photo', 'consent'
 ];
+const COMMON_EXPENSE_HEADERS = [
+  'expenseId', 'timestamp', 'entryDate', 'expenseMonth', 'entryType', 'category',
+  'description', 'amount', 'mode', 'paidTo', 'personName', 'loanDirection',
+  'loanStatus', 'returnDate', 'note', 'recordedByRole', 'recordedByName'
+];
 
 function doGet(e) {
   try {
     const view = (e && e.parameter && e.parameter.view) || 'public';
     setupSheets_();
     if (view === 'setup') {
-      return json_({ ok: true, message: 'Sheets are ready', tabs: [PROFILE_SHEET, AGENT_SHEET, SESSION_SHEET, PAYMENT_SHEET, AGENT_PAYOUT_SHEET, STORY_SHEET] });
+      return json_({ ok: true, message: 'Sheets are ready', tabs: [PROFILE_SHEET, AGENT_SHEET, SESSION_SHEET, PAYMENT_SHEET, AGENT_PAYOUT_SHEET, STORY_SHEET, COMMON_EXPENSE_SHEET] });
     }
 
     const profiles = readSheet_(PROFILE_SHEET, PROFILE_HEADERS);
@@ -97,6 +104,7 @@ function doPost(e) {
     if (action === 'saveProfileNote') return saveProfileNote_(data);
     if (action === 'saveServiceAgreement') return saveServiceAgreement_(data);
     if (action === 'uploadAgreementScan') return uploadAgreementScan_(data);
+    if (action === 'uploadOtherDocument') return uploadOtherDocument_(data);
     if (action === 'completeMarriage') return completeMarriage_(data);
     if (action === 'deleteProfile') return deleteProfile_(data);
     if (action === 'saveAgent') return saveAgent_(data);
@@ -109,6 +117,7 @@ function doPost(e) {
     if (action === 'savePayment') return savePayment_(data);
     if (action === 'saveStory') return saveStory_(data);
     if (action === 'deleteStory') return deleteStory_(data);
+    if (action === 'saveCommonExpense') return saveCommonExpense_(data);
 
     return json_({ ok: false, error: 'Unknown action: ' + action });
   } catch (err) {
@@ -157,6 +166,7 @@ function dashboard_(data) {
   let payments = readSheet_(PAYMENT_SHEET, PAYMENT_HEADERS);
   let agentPayouts = readSheet_(AGENT_PAYOUT_SHEET, AGENT_PAYOUT_HEADERS);
   const stories = readSheet_(STORY_SHEET, STORY_HEADERS);
+  let commonExpenses = session.role === 'admin' ? readSheet_(COMMON_EXPENSE_SHEET, COMMON_EXPENSE_HEADERS) : [];
   const agents = readSheet_(AGENT_SHEET, AGENT_HEADERS).map(item => safeAgent_(item, session.role === 'admin'));
 
   if (session.role === 'agent') {
@@ -177,8 +187,45 @@ function dashboard_(data) {
     payments: payments,
     agentPayouts: agentPayouts,
     currentAgent: currentAgent,
-    stories: session.role === 'admin' ? stories : []
+    stories: session.role === 'admin' ? stories : [],
+    commonExpenses: commonExpenses
   });
+}
+
+
+function saveCommonExpense_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can record expense book entries');
+
+  const entryType = String(data.entryType || 'daily').trim();
+  const entryDate = data.entryDate || data.expenseDate || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const expenseMonth = data.expenseMonth || String(entryDate).slice(0, 7);
+  const amount = Number(data.amount || 0);
+  if (!amount || amount <= 0) throw new Error('Valid amount is required');
+
+  const expense = {};
+  COMMON_EXPENSE_HEADERS.forEach(header => expense[header] = data[header] || '');
+  expense.expenseId = expense.expenseId || ('EXP' + Date.now().toString().slice(-9));
+  expense.timestamp = new Date();
+  expense.entryDate = entryDate;
+  expense.expenseMonth = expenseMonth;
+  expense.entryType = entryType;
+  expense.category = data.category || (entryType === 'fixed' ? 'Other Fixed' : entryType === 'loanGiven' ? 'Loan Given' : entryType === 'loanReceived' ? 'Loan Received' : 'Other');
+  expense.description = data.description || '';
+  expense.amount = amount;
+  expense.mode = data.mode || 'Cash';
+  expense.paidTo = data.paidTo || '';
+  expense.personName = data.personName || data.paidTo || '';
+  expense.loanDirection = entryType === 'loanGiven' ? 'given' : (entryType === 'loanReceived' ? 'received' : '');
+  expense.loanStatus = data.loanStatus || (entryType === 'loanGiven' ? 'pending' : (entryType === 'loanReceived' ? 'received' : ''));
+  expense.returnDate = data.returnDate || '';
+  expense.note = data.note || '';
+  expense.recordedByRole = session.role;
+  expense.recordedByName = session.name || session.role;
+
+  const sheet = getSheet_(COMMON_EXPENSE_SHEET, COMMON_EXPENSE_HEADERS);
+  appendObject_(sheet, COMMON_EXPENSE_HEADERS, expense);
+  return json_({ ok: true, expense: expense });
 }
 
 function saveStory_(data) {
@@ -321,6 +368,35 @@ function uploadAgreementScan_(data) {
 
   updateRow_(sheet, found.row, PROFILE_HEADERS, updates);
   return json_({ ok: true, url: updates.agreementScanUrl, profile: updates });
+}
+
+function uploadOtherDocument_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can upload other documents');
+
+  const sheet = getSheet_(PROFILE_SHEET, PROFILE_HEADERS);
+  const found = findById_(sheet, data.id);
+  const updates = Object.assign({}, found.item);
+  const fileData = data.file || data.otherDocument || '';
+  if (!String(fileData).startsWith('data:')) throw new Error('Other document file is required');
+
+  const documentName = String(data.documentName || data.fileName || 'Other document').trim() || 'Other document';
+  const url = saveProfileFile_(fileData, found.item.id, found.item.fullName, 'other_document');
+  const existingDocuments = parseOtherDocuments_(updates.otherDocuments);
+  const documentItem = {
+    name: documentName,
+    fileName: data.fileName || documentName,
+    url: url,
+    uploadedAt: new Date().toISOString(),
+    uploadedBy: session.name || 'Admin'
+  };
+
+  updates.otherDocuments = JSON.stringify(existingDocuments.concat([documentItem]));
+  updates.otherDocumentUploadedAt = new Date();
+  updates.otherDocumentUploadedBy = session.name || 'Admin';
+
+  updateRow_(sheet, found.row, PROFILE_HEADERS, updates);
+  return json_({ ok: true, url: url, document: documentItem, profile: updates });
 }
 
 function completeMarriage_(data) {
@@ -671,11 +747,12 @@ function setupSheets_() {
   getSheet_(PAYMENT_SHEET, PAYMENT_HEADERS);
   getSheet_(AGENT_PAYOUT_SHEET, AGENT_PAYOUT_HEADERS);
   getSheet_(STORY_SHEET, STORY_HEADERS);
+  getSheet_(COMMON_EXPENSE_SHEET, COMMON_EXPENSE_HEADERS);
 }
 
 function setupSheets() {
   setupSheets_();
-  return 'Profiles, Agents, Sessions, Payments, AgentPayouts, Stories tabs are ready.';
+  return 'Profiles, Agents, Sessions, Payments, AgentPayouts, Stories, CommonExpenses tabs are ready.';
 }
 
 function readSheet_(name, headers) {
@@ -949,6 +1026,23 @@ function saveProfileFile_(dataUrl, id, fullName, type) {
   return file.getUrl();
 }
 
+function parseOtherDocuments_(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  const text = String(value || '').trim();
+  if (!text) return [];
+  try {
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    return text
+      .split(/[\n,]+/)
+      .map(url => String(url || '').trim())
+      .filter(Boolean)
+      .map((url, index) => ({ name: 'Document ' + (index + 1), url: url }));
+  }
+}
+
 function getProfileFolder_(id, fullName) {
   const parent = DriveApp.getFolderById(PROFILE_FOLDER_ID);
   const safeName = String(fullName || 'Client').replace(/[^\w-]+/g, '_').slice(0, 40) || 'Client';
@@ -1007,5 +1101,6 @@ function json_(payload) {
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
 
 

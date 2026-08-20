@@ -1,10 +1,11 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDTlWm8wC4oO1X7k_0xCZ_zqaUW2nJCUOTFnCj5ELIb44DRfP4h_tQw3m1eLO1Xw9Bog/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4gQHKykWExnU_dkGSEl-2fMY-7pkpe5-BblvTIZDLAvW5n2fmmEIDO-2-wUhmQHb37w/exec";
 
 const state = {
   profiles: [],
   agents: [],
   payments: [],
   agentPayouts: [],
+  commonExpenses: [],
   stories: [],
   filtered: [],
   session: null,
@@ -21,6 +22,7 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 
 const AGENT_ADDRESS_FIELDS = ["houseNo", "villageTown", "postOffice", "policeStation", "district", "state", "pinCode"];
 const AGENT_BANK_FIELDS = ["bankName", "ifscCode", "accountNumber", "accountHolderName", "upiId"];
+const HOME_PROFILE_LIMIT = 6;
 
 function formatAgentAddress(agent = {}) {
   const parts = AGENT_ADDRESS_FIELDS.map((key) => agent[key]).filter(Boolean);
@@ -136,6 +138,9 @@ function bindUi() {
   if ($("#marriageForm")) $("#marriageForm").addEventListener("submit", submitMarriageComplete);
   if ($("#serviceAgreementForm")) $("#serviceAgreementForm").addEventListener("submit", submitServiceAgreement);
   if ($("#agreementUploadForm")) $("#agreementUploadForm").addEventListener("submit", submitAgreementScanUpload);
+  if ($("#otherDocumentUploadForm")) $("#otherDocumentUploadForm").addEventListener("submit", submitOtherDocumentUpload);
+  if ($("#selfDeclarationForm")) $("#selfDeclarationForm").addEventListener("submit", submitSelfDeclaration);
+  if ($("#clearSelfDeclarationForm")) $("#clearSelfDeclarationForm").addEventListener("click", clearSelfDeclarationForm);
   bindPhotoCropper();
   if ($("#printReceiptBtn")) $("#printReceiptBtn").addEventListener("click", printReceipt);
   if ($("#dashboardSearch")) {
@@ -167,8 +172,7 @@ function bindUi() {
 
   $("#quickSearch").addEventListener("submit", (event) => {
     event.preventDefault();
-    applyFilters(new FormData(event.target));
-    document.getElementById("browse").scrollIntoView({ behavior: "smooth" });
+    goToProfiles();
   });
   $("#sideFilters").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -188,6 +192,10 @@ function bindUi() {
   if ($("#agentRegisterForm")) $("#agentRegisterForm").addEventListener("submit", submitAgentRegister);
   if ($("#myAccountForm")) $("#myAccountForm").addEventListener("submit", submitMyAccount);
   if ($("#agentPayoutForm")) $("#agentPayoutForm").addEventListener("submit", submitAgentPayout);
+  if ($("#commonExpenseForm")) {
+    $("#commonExpenseForm").addEventListener("submit", submitCommonExpense);
+    setExpenseBookDefaults($("#commonExpenseForm"));
+  }
   if ($("#agentIdCardBtn")) $("#agentIdCardBtn").addEventListener("click", () => openAgentIdCard(state.currentAgent));
   if ($("#printAgentIdBtn")) $("#printAgentIdBtn").addEventListener("click", printAgentIdCard);
   $$("[data-open-agent-register]").forEach((button) => button.addEventListener("click", (event) => {
@@ -248,6 +256,7 @@ async function loadDashboardData() {
   state.agents = cleanAgents(result.agents || []);
   state.payments = cleanPayments(result.payments || []);
   state.agentPayouts = cleanAgentPayouts(result.agentPayouts || []);
+  state.commonExpenses = cleanCommonExpenses(result.commonExpenses || []);
   state.currentAgent = result.currentAgent || null;
   state.stories = cleanStories(result.stories || []);
   renderAgentDashboardPhoto(state.currentAgent);
@@ -285,7 +294,7 @@ function renderCards(list) {
     cards.innerHTML = emptyMessage("No verified profiles found.");
     return;
   }
-  list.forEach((profile) => cards.appendChild(profileCard(profile)));
+  list.slice(0, HOME_PROFILE_LIMIT).forEach((profile) => cards.appendChild(profileCard(profile)));
 }
 
 function profileCard(profile) {
@@ -440,7 +449,7 @@ function renderAgentDashboardPhoto(agent) {
 function renderTabs() {
   const tabs = $("#dashboardTabs");
   const items = state.session.role === "admin"
-    ? [["profiles", "Profiles"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agents", "Agents"], ["agentPayouts", "Agent Payouts"], ["agentForm", "Create Agent"], ["stories", "Stories"]]
+    ? [["profiles", "Profiles"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agents", "Agents"], ["agentPayouts", "Agent Payouts"], ["commonExpenses", "Expense Book"], ["agentForm", "Create Agent"], ["selfDeclaration", "Self Declaration"], ["stories", "Stories"]]
     : [["profiles", "My Clients"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agentPayouts", "My Payouts"], ["myAccount", "My Account"]];
   tabs.innerHTML = "";
   items.forEach(([key, label]) => {
@@ -479,19 +488,25 @@ function renderDashboard() {
   }
 
   $("#agentTools").classList.toggle("hidden", !(state.activeTab === "agentForm" && state.session.role === "admin"));
+  $("#selfDeclarationTools")?.classList.toggle("hidden", !(state.activeTab === "selfDeclaration" && state.session.role === "admin"));
   $("#myAccountTools")?.classList.toggle("hidden", !(state.activeTab === "myAccount" && state.session.role === "agent"));
   $("#agentPayoutTools")?.classList.toggle("hidden", !(state.activeTab === "agentPayouts" && state.session.role === "admin"));
+  $("#commonExpenseTools")?.classList.toggle("hidden", !(state.activeTab === "commonExpenses" && state.session.role === "admin"));
 
   if (state.activeTab === "payments") {
     renderPaymentTable();
   } else if (state.activeTab === "agentPayouts") {
     renderAgentPayoutTable();
+  } else if (state.activeTab === "commonExpenses" && state.session.role === "admin") {
+    renderCommonExpenseTable();
   } else if (state.activeTab === "marriages") {
     renderMarriageTable();
   } else if (state.activeTab === "agents" && state.session.role === "admin") {
     renderAgentTable();
   } else if (state.activeTab === "agentForm" && state.session.role === "admin") {
     renderAgentFormView();
+  } else if (state.activeTab === "selfDeclaration" && state.session.role === "admin") {
+    renderSelfDeclarationView();
   } else if (state.activeTab === "myAccount" && state.session.role === "agent") {
     renderMyAccountView();
   } else if (state.activeTab === "stories" && state.session.role === "admin") {
@@ -499,6 +514,11 @@ function renderDashboard() {
   } else {
     renderProfileTable(filteredProfiles);
   }
+}
+
+function renderSelfDeclarationView() {
+  $("#tableHead").innerHTML = "";
+  $("#tableBody").innerHTML = `<tr><td colspan="8" class="note">Self declaration form fill করে Print / Save PDF করুন। পরে signed scan client-এর other document হিসেবে upload করা যাবে।</td></tr>`;
 }
 
 function activeClientProfiles() {
@@ -747,6 +767,84 @@ function renderAgentPayoutTable() {
   });
 }
 
+
+function renderCommonExpenseTable() {
+  const expenses = cleanCommonExpenses(state.commonExpenses || []);
+  const byMonth = expenses.reduce((groups, expense) => {
+    const month = expense.expenseMonth || String(expense.entryDate || expense.expenseDate || "").slice(0, 7) || "No Month";
+    if (!groups[month]) groups[month] = [];
+    groups[month].push(expense);
+    return groups;
+  }, {});
+  const fixedTotal = expenses.filter(isFixedExpense).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const dailyTotal = expenses.filter(isDailyExpense).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const loanGiven = expenses.filter((expense) => expense.entryType === "loanGiven" || expense.loanDirection === "given").reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const loanReceived = expenses.filter((expense) => expense.entryType === "loanReceived" || expense.loanDirection === "received").reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const grandTotal = fixedTotal + dailyTotal + loanGiven - loanReceived;
+
+  $("#tableHead").innerHTML = `<tr><th>Month</th><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Mode</th><th>Paid To / Person</th><th>Status</th><th>Note</th><th>Amount</th><th>Recorded By</th></tr>`;
+  const body = $("#tableBody");
+  body.innerHTML = "";
+  if (!expenses.length) {
+    body.innerHTML = `<tr><td colspan="11">No expense book entries yet.</td></tr>`;
+    return;
+  }
+
+  const summary = document.createElement("tr");
+  summary.innerHTML = `<td colspan="2"><strong>Monthly Book Total</strong></td><td colspan="2">Fixed: <strong class="amount-debit">₹${escapeHtml(fixedTotal)}</strong></td><td colspan="2">Daily: <strong class="amount-debit">₹${escapeHtml(dailyTotal)}</strong></td><td colspan="2">Loan: <strong class="amount-debit">₹${escapeHtml(loanGiven - loanReceived)}</strong></td><td colspan="2">Grand: <strong class="amount-debit">₹${escapeHtml(grandTotal)}</strong></td><td></td>`;
+  body.appendChild(summary);
+
+  Object.keys(byMonth).sort().reverse().forEach((month) => {
+    const monthItems = byMonth[month];
+    const monthFixed = monthItems.filter(isFixedExpense).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+    const monthDaily = monthItems.filter(isDailyExpense).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+    const monthLoanGiven = monthItems.filter((expense) => expense.entryType === "loanGiven" || expense.loanDirection === "given").reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+    const monthLoanReceived = monthItems.filter((expense) => expense.entryType === "loanReceived" || expense.loanDirection === "received").reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+    const monthRow = document.createElement("tr");
+    monthRow.innerHTML = `<td colspan="11"><strong>${escapeHtml(month)}</strong> · Fixed ₹${escapeHtml(monthFixed)} · Daily ₹${escapeHtml(monthDaily)} · Loan pending ₹${escapeHtml(monthLoanGiven - monthLoanReceived)} · Total ₹${escapeHtml(monthFixed + monthDaily + monthLoanGiven - monthLoanReceived)}</td>`;
+    body.appendChild(monthRow);
+    monthItems.slice().sort((a, b) => String(b.entryDate || b.expenseDate || "").localeCompare(String(a.entryDate || a.expenseDate || ""))).forEach((expense) => {
+      const type = expense.entryType || legacyExpenseType(expense);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(expense.expenseMonth || String(expense.entryDate || expense.expenseDate || "").slice(0, 7))}</td>
+        <td>${escapeHtml(formatDate(expense.entryDate || expense.expenseDate) || expense.entryDate || expense.expenseDate || "")}</td>
+        <td>${escapeHtml(typeLabel(type))}</td>
+        <td>${escapeHtml(expense.category || "")}</td>
+        <td>${escapeHtml(expense.description || "")}</td>
+        <td>${escapeHtml(expense.mode || "")}</td>
+        <td>${escapeHtml(expense.paidTo || expense.personName || "")}</td>
+        <td>${escapeHtml(expense.loanStatus || "")}</td>
+        <td>${escapeHtml(expense.note || "")}</td>
+        <td><strong class="amount-debit">-₹${escapeHtml(expense.amount || "0")}</strong></td>
+        <td>${escapeHtml(expense.recordedByName || expense.recordedByRole || "")}</td>`;
+      body.appendChild(tr);
+    });
+  });
+}
+
+function isFixedExpense(expense) {
+  return expense.entryType === "fixed" || ["Room Rent", "Electricity", "Internet"].includes(expense.category || "");
+}
+
+function isDailyExpense(expense) {
+  const type = expense.entryType || legacyExpenseType(expense);
+  return type === "daily";
+}
+
+function legacyExpenseType(expense) {
+  if (["Room Rent", "Electricity", "Internet"].includes(expense.category || "")) return "fixed";
+  return "daily";
+}
+
+function typeLabel(type) {
+  return {
+    fixed: "Monthly Fixed",
+    daily: "Daily Expense",
+    loanGiven: "ধার দিলাম",
+    loanReceived: "ধার ফেরত পেলাম"
+  }[type] || type || "Expense";
+}
 function renderMyAccountView() {
   $("#tableHead").innerHTML = "";
   const body = $("#tableBody");
@@ -897,7 +995,42 @@ async function submitAgentPayout(event) {
   }
 }
 
-async function submitMyAccount(event) {
+
+function setExpenseBookDefaults(form) {
+  if (!form) return;
+  const today = new Date();
+  const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  if (form.entryDate && !form.entryDate.value) form.entryDate.value = localDate;
+  if (form.expenseMonth && !form.expenseMonth.value) form.expenseMonth.value = localDate.slice(0, 7);
+}
+async function submitCommonExpense(event) {
+  event.preventDefault();
+  if (!state.session || state.session.role !== "admin") return toast("Only admin can save expense book entries");
+  const form = event.target;
+  const button = form.querySelector("button[type='submit']");
+  button.disabled = true;
+  button.textContent = "Saving...";
+  try {
+    const payload = Object.fromEntries(new FormData(form).entries());
+    payload.token = state.session.token;
+    if (!payload.expenseMonth && payload.entryDate) payload.expenseMonth = payload.entryDate.slice(0, 7);
+    if (payload.entryType === "loanGiven") payload.category = payload.category || "Loan Given";
+    if (payload.entryType === "loanReceived") payload.category = payload.category || "Loan Received";
+    const result = await api("saveCommonExpense", payload);
+    if (!result.ok) throw new Error(result.error || "Expense save failed");
+    toast("Expense book entry saved");
+    form.reset();
+    const today = new Date().toISOString().slice(0, 10);
+    if (form.entryDate) form.entryDate.value = today;
+    if (form.expenseMonth) form.expenseMonth.value = today.slice(0, 7);
+    await loadDashboardData();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save Entry";
+  }
+}async function submitMyAccount(event) {
   event.preventDefault();
   const button = event.target.querySelector("button[type='submit']");
   button.disabled = true;
@@ -974,6 +1107,14 @@ function cleanAgentPayouts(list) {
   );
 }
 
+
+function cleanCommonExpenses(list) {
+  return (Array.isArray(list) ? list : []).filter((expense) =>
+    String(expense?.expenseId || "").trim() ||
+    String(expense?.category || "").trim() ||
+    String(expense?.amount || "").trim()
+  );
+}
 function cleanProfiles(list) {
   return (Array.isArray(list) ? list : []).filter((profile) =>
     String(profile?.id || "").trim() ||
@@ -1308,6 +1449,161 @@ function openReceiptModal(payment) {
   openModal("receiptModal");
 }
 
+function submitSelfDeclaration(event) {
+  event.preventDefault();
+  if (!state.session || state.session.role !== "admin") return toast("Only admin can print self declaration");
+  const form = event.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+  activeReceiptTitle = `${sanitizeFileName(data.clientName || data.profileId || "Client")} self declaration`;
+  if ($("#receiptModalTitle")) $("#receiptModalTitle").textContent = "Self Declaration";
+  if ($("#printReceiptBtn")) $("#printReceiptBtn").textContent = "Print / Save PDF";
+  if ($("#receiptSize")) $("#receiptSize").value = "a4";
+  setActivePrintMode("agreement");
+  $("#receiptBody").innerHTML = selfDeclarationTemplate(data);
+  openModal("receiptModal");
+}
+
+function clearSelfDeclarationForm() {
+  $("#selfDeclarationForm")?.reset();
+}
+
+function declarationValue(value) {
+  return escapeHtml(value || "");
+}
+
+function declarationCheck(value, option) {
+  return String(value || "") === option ? "✓" : "";
+}
+
+function selfDeclarationTemplate(data = {}) {
+  const declarationDate = formatDate(data.declarationDate) || data.declarationDate || "";
+  const dob = formatDate(data.dob) || data.dob || "";
+  return `
+    <div class="declaration-paper receipt-a4" id="receiptPrintArea">
+      <header class="declaration-header">
+        <div class="declaration-brand">বিবাহ বন্ধন</div>
+        <div class="declaration-subtitle">পূর্ববর্তী বিবাহ থাকা অবস্থায় স্বেচ্ছায় সম্বন্ধ দেখার স্ব-ঘোষণাপত্র</div>
+        <div class="declaration-en">SELF DECLARATION &amp; UNDERTAKING</div>
+      </header>
+
+      <div>আমি,</div>
+      <div class="declaration-grid2">
+        <div class="declaration-field"><span class="declaration-label">নাম:</span><span class="declaration-line">${declarationValue(data.clientName)}</span></div>
+        <div class="declaration-field"><span class="declaration-label">পিতা/মাতার/অভিভাবকের নাম:</span><span class="declaration-line">${declarationValue(data.guardianName)}</span></div>
+        <div class="declaration-field"><span class="declaration-label">জন্মতারিখ:</span><span class="declaration-line">${declarationValue(dob)}</span></div>
+        <div class="declaration-field"><span class="declaration-label">মোবাইল নম্বর:</span><span class="declaration-line">${declarationValue(data.phone)}</span></div>
+      </div>
+      <div class="declaration-field"><span class="declaration-label">বর্তমান ঠিকানা:</span><span class="declaration-line">${declarationValue(data.address)}</span></div>
+      <div class="declaration-field"><span class="declaration-label">পরিচয়পত্রের ধরন ও নম্বর:</span><span class="declaration-line">${declarationValue(data.idProof)}</span></div>
+
+      <p>এই মর্মে স্বেচ্ছায় এবং সম্পূর্ণ জ্ঞান ও সুস্থ অবস্থায় ঘোষণা করছি যে-</p>
+
+      <section class="declaration-section">
+        <h2>১. পূর্ববর্তী বিবাহের বিবরণ</h2>
+        <p>আমার পূর্বে বিবাহ হয়েছিল এবং আমার পূর্ববর্তী বিবাহের আইনগত বিচ্ছেদ/Divorce এখনও সম্পন্ন হয়নি।</p>
+        <div class="declaration-field"><span class="declaration-label">পূর্ববর্তী স্বামী/স্ত্রীর নাম:</span><span class="declaration-line">${declarationValue(data.previousSpouseName)}</span></div>
+        <div class="declaration-field"><span class="declaration-label">পূর্ববর্তী স্বামী/স্ত্রীর ঠিকানা:</span><span class="declaration-line">${declarationValue(data.previousSpouseAddress)}</span></div>
+        <div class="declaration-grid2">
+          <div class="declaration-field"><span class="declaration-label">আনুমানিক বিবাহের সাল:</span><span class="declaration-line">${declarationValue(data.marriageYear)}</span></div>
+          <div class="declaration-field"><span class="declaration-label">বিবাহের স্থান:</span><span class="declaration-line">${declarationValue(data.marriagePlace)}</span></div>
+        </div>
+        <div class="declaration-checkrow"><b>বর্তমানে পূর্ববর্তী স্বামী/স্ত্রীর সঙ্গে একসঙ্গে বসবাস করি কি না:</b>
+          <span class="declaration-box">${declarationCheck(data.livingTogether, "হ্যাঁ")}</span>হ্যাঁ
+          <span class="declaration-box">${declarationCheck(data.livingTogether, "না")}</span>না
+        </div>
+        <div class="declaration-checkrow"><b>পূর্ববর্তী বিবাহ/সম্পর্ক থেকে সন্তান আছে কি না:</b>
+          <span class="declaration-box">${declarationCheck(data.hasChildren, "হ্যাঁ")}</span>হ্যাঁ
+          <span class="declaration-box">${declarationCheck(data.hasChildren, "না")}</span>না
+        </div>
+        <div class="declaration-grid2">
+          <div class="declaration-field"><span class="declaration-label">ছেলে কতজন:</span><span class="declaration-line">${declarationValue(data.sonsCount)}</span></div>
+          <div class="declaration-field"><span class="declaration-label">মেয়ে কতজন:</span><span class="declaration-line">${declarationValue(data.daughtersCount)}</span></div>
+        </div>
+        <div class="declaration-field"><span class="declaration-label">সন্তানদের বয়স:</span><span class="declaration-line">${declarationValue(data.childrenAges)}</span></div>
+      </section>
+
+      <section class="declaration-section">
+        <h2>২. স্বেচ্ছায় সম্বন্ধ দেখার ঘোষণা</h2>
+        <p>আমি ঘোষণা করছি যে, আমার পূর্ববর্তী বিবাহের বিষয়টি জানা ও বুঝে আমি <span class="declaration-bold">নিজের সম্পূর্ণ ইচ্ছায় এবং কোনো প্রকার জোর, চাপ, ভয়, প্রলোভন বা প্রতারণা ছাড়া</span> “বিবাহ বন্ধন” সংস্থার মাধ্যমে নতুন বিবাহের জন্য সম্বন্ধ দেখতে এবং সম্ভাব্য পাত্র/পাত্রীর সঙ্গে বিবাহের বিষয়ে আলোচনা করতে ইচ্ছুক।</p>
+        <p>আমি স্বীকার করছি যে, আমার পূর্ববর্তী বিবাহের বিষয়টি বিবাহ বন্ধন সংস্থার কাছে আমি গোপন করিনি।</p>
+      </section>
+
+      <section class="declaration-section">
+        <h2>৩. ভবিষ্যৎ বিবাহের বিষয়ে আমার দায়িত্ব</h2>
+        <p>আমি বুঝতে পারছি যে, আমার পূর্ববর্তী বিবাহ আইনগতভাবে সম্পূর্ণভাবে নিষ্পত্তি না হয়ে থাকলে নতুন বিবাহের ক্ষেত্রে আইনগত জটিলতা সৃষ্টি হতে পারে।</p>
+        <p>এই বিষয়ে প্রয়োজনীয় আইনগত পরামর্শ গ্রহণ করা, আমার বৈবাহিক অবস্থার আইনগত বৈধতা যাচাই করা এবং ভবিষ্যতে বিবাহ সম্পন্ন করার আগে প্রয়োজনীয় আইনগত অনুমতি/নথি সংগ্রহ করা <span class="declaration-bold">সম্পূর্ণভাবে আমার নিজস্ব দায়িত্ব</span>।</p>
+        <p>“বিবাহ বন্ধন”-এর মাধ্যমে কোনো সম্বন্ধ দেখা বা কারও সঙ্গে পরিচিত হওয়াকে আমি আইনগতভাবে বিবাহের অনুমতি বা নিশ্চয়তা হিসেবে দাবি করব না।</p>
+      </section>
+
+      <section class="declaration-section">
+        <h2>৪. পূর্ববর্তী ও পরবর্তী বিরোধ সংক্রান্ত ঘোষণা</h2>
+        <p>আমি স্বীকার করছি যে, আমার পূর্ববর্তী বিবাহ, পূর্ববর্তী স্বামী/স্ত্রী, তাঁদের পরিবার, আত্মীয়স্বজন অথবা অন্য কোনো পক্ষের সঙ্গে আমার ব্যক্তিগত, পারিবারিক বা আইনগত কোনো বিরোধ থাকলে, অথবা ভবিষ্যতে কোনো বিরোধ সৃষ্টি হলে, সেই বিরোধের জন্য <span class="declaration-bold">আমি নিজেই প্রয়োজনীয় আইনগত ব্যবস্থা গ্রহণ ও তার দায়ভার বহন করব।</span></p>
+        <p>একইভাবে, “বিবাহ বন্ধন”-এর মাধ্যমে কোনো ব্যক্তির সঙ্গে আমার পরিচয় বা সম্বন্ধ হওয়ার পর আমার পক্ষ থেকে বা অপর পক্ষের পক্ষ থেকে কোনো ব্যক্তিগত, পারিবারিক বা আইনগত বিরোধ সৃষ্টি হলে, আমার দেওয়া তথ্য ও আমার নিজস্ব কার্যকলাপের কারণে উদ্ভূত বিষয়ে “বিবাহ বন্ধন”-কে দায়ী করা যাবে না।</p>
+      </section>
+
+      <section class="declaration-section">
+        <h2>৫. তথ্যের সত্যতা</h2>
+        <p>আমি ঘোষণা করছি যে, এই Self Declaration-এ আমার দ্বারা প্রদত্ত সকল তথ্য আমার জানা ও বিশ্বাস অনুযায়ী সত্য ও সঠিক।</p>
+        <p>আমি কোনো গুরুত্বপূর্ণ তথ্য ইচ্ছাকৃতভাবে গোপন করলে বা ভুল তথ্য প্রদান করলে, তার সম্পূর্ণ দায়ভার আমার নিজের।</p>
+        <p>পরবর্তীতে আমার বৈবাহিক অবস্থা বা পূর্ববর্তী বিবাহ সম্পর্কিত কোনো গুরুত্বপূর্ণ তথ্য পরিবর্তিত হলে আমি তা “বিবাহ বন্ধন” সংস্থাকে অবহিত করব।</p>
+      </section>
+
+      <section class="declaration-section">
+        <h2>৬. বিবাহ বন্ধনের ভূমিকা</h2>
+        <p>আমি বুঝতে পারছি যে, “বিবাহ বন্ধন” একটি সম্বন্ধ/পরিচয় করিয়ে দেওয়ার পরিষেবা প্রদানকারী সংস্থা।</p>
+        <p>এই Self Declaration-এর ভিত্তিতে “বিবাহ বন্ধন” আমার পূর্ববর্তী বিবাহের আইনগত অবস্থা, Divorce-এর বৈধতা বা ভবিষ্যৎ বিবাহের আইনগত বৈধতার কোনো নিশ্চয়তা প্রদান করছে না।</p>
+        <p>আমার দেওয়া তথ্যের ভিত্তিতে কোনো সম্বন্ধ দেখা, যোগাযোগ করা বা আলোচনা করা সম্পূর্ণরূপে আমার নিজস্ব সিদ্ধান্ত ও দায়িত্ব।</p>
+      </section>
+
+      <section class="declaration-section">
+        <h2>৭. চূড়ান্ত ঘোষণা</h2>
+        <p>উপরোক্ত বিষয়গুলি আমি সম্পূর্ণভাবে পড়ে, বুঝে এবং জেনে নিজের ইচ্ছায় এই Self Declaration প্রদান করছি।</p>
+        <p>আমি সম্মত যে, আমার পূর্ববর্তী বিবাহ সংক্রান্ত তথ্য, আমার নিজস্ব সিদ্ধান্ত এবং আমার কার্যকলাপের কারণে ভবিষ্যতে কোনো ব্যক্তিগত বা আইনগত বিরোধ সৃষ্টি হলে তার জন্য প্রয়োজনীয় দায়িত্ব ও আইনগত ব্যবস্থা গ্রহণের দায়ভার আমার নিজের থাকবে।</p>
+      </section>
+
+      <div class="declaration-signature-grid">
+        <div>
+          <div class="declaration-field"><span class="declaration-label">ঘোষণাকারীর নাম:</span><span class="declaration-line">${declarationValue(data.clientName)}</span></div>
+          <div class="declaration-field"><span class="declaration-label">স্বাক্ষর:</span><span class="declaration-line"></span></div>
+          <div class="declaration-field"><span class="declaration-label">তারিখ:</span><span class="declaration-line">${declarationValue(declarationDate)}</span></div>
+        </div>
+      </div>
+
+      <div class="declaration-signature-grid">
+        <div>
+          <h3>সাক্ষী - ১</h3>
+          <div class="declaration-field"><span class="declaration-label">নাম:</span><span class="declaration-line"></span></div>
+          <div class="declaration-field"><span class="declaration-label">ঠিকানা:</span><span class="declaration-line"></span></div>
+          <div class="declaration-field"><span class="declaration-label">মোবাইল নম্বর:</span><span class="declaration-line"></span></div>
+          <div class="declaration-field"><span class="declaration-label">স্বাক্ষর:</span><span class="declaration-line"></span></div>
+        </div>
+        <div>
+          <h3>সাক্ষী - ২</h3>
+          <div class="declaration-field"><span class="declaration-label">নাম:</span><span class="declaration-line"></span></div>
+          <div class="declaration-field"><span class="declaration-label">ঠিকানা:</span><span class="declaration-line"></span></div>
+          <div class="declaration-field"><span class="declaration-label">মোবাইল নম্বর:</span><span class="declaration-line"></span></div>
+          <div class="declaration-field"><span class="declaration-label">স্বাক্ষর:</span><span class="declaration-line"></span></div>
+        </div>
+      </div>
+
+      <section class="declaration-section declaration-office">
+        <h2>শুধুমাত্র বিবাহ বন্ধন অফিসের ব্যবহারের জন্য</h2>
+        <div class="declaration-grid2">
+          <div class="declaration-field"><span class="declaration-label">Profile / Registration ID:</span><span class="declaration-line">${declarationValue(data.profileId)}</span></div>
+          <div class="declaration-field"><span class="declaration-label">Document Received:</span><span class="declaration-line">${declarationValue(data.documentReceived)}</span></div>
+          <div class="declaration-field"><span class="declaration-label">Previous Marriage Declared:</span><span class="declaration-line">${declarationValue(data.previousMarriageDeclared)}</span></div>
+          <div class="declaration-field"><span class="declaration-label">Divorce Proof:</span><span class="declaration-line">${declarationValue(data.divorceProof)}</span></div>
+        </div>
+        <div class="declaration-field"><span class="declaration-label">Office Remark:</span><span class="declaration-line">${declarationValue(data.officeRemark)}</span></div>
+        <div class="declaration-field"><span class="declaration-label">Authorized Person:</span><span class="declaration-line">${declarationValue(data.authorizedPerson)}</span></div>
+        <div class="declaration-grid2">
+          <div class="declaration-field"><span class="declaration-label">Signature:</span><span class="declaration-line"></span></div>
+          <div class="declaration-field"><span class="declaration-label">Date:</span><span class="declaration-line">${declarationValue(declarationDate)}</span></div>
+        </div>
+      </section>
+    </div>`;
+}
+
 function receiptTemplate(receipt) {
   const isDebit = receipt.transactionType === "debit";
   return `
@@ -1317,7 +1613,8 @@ function receiptTemplate(receipt) {
           <img class="receipt-logo-img" src="bfi.png" alt="বিবাহ বন্ধন">
           <div>
             <h3>বিবাহ বন্ধন</h3>
-            <p>Marriage Bureau & Matrimonial Service</p>
+            <p>Marriage Bureau Office</p>
+            <small>Registration No.: 1852</small>
             <small>তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭</small>
             <small>Mobile / WhatsApp: 9064899089</small>
           </div>
@@ -1492,6 +1789,16 @@ function openDetails(profile) {
       <strong>Uploaded Agreement Scan</strong>
       <a class="document-link" href="${escapeAttr(agreementScanUrl)}" target="_blank" rel="noopener">Open link</a>
     </div>` : "";
+  const otherDocuments = normalizeOtherDocuments(profile);
+  const otherDocumentsPanel = isLoggedIn && otherDocuments.length ? `
+    <div class="agreement-link-panel">
+      <strong>Other Documents</strong>
+      <div class="document-link-list">
+        ${otherDocuments.map((documentItem, index) => `
+          <a class="document-link" href="${escapeAttr(documentItem.url)}" target="_blank" rel="noopener">${escapeHtml(documentItem.name || `Document ${index + 1}`)}</a>
+        `).join("")}
+      </div>
+    </div>` : "";
   $("#detailBody").innerHTML = `
     <div class="detail-hero">
       <div class="detail-photo-wrap">${photo ? `<img class="detail-photo" src="${escapeAttr(photo)}" referrerpolicy="no-referrer" alt="${escapeAttr(profile.fullName || "Profile")}">` : `<div class="detail-photo avatar" style="aspect-ratio:1">${initials(profile.fullName)}</div>`}</div>
@@ -1505,6 +1812,7 @@ function openDetails(profile) {
     ${paymentPanel}
     ${isLoggedIn ? `<div class="row-actions detail-actions"></div>` : ""}
     ${agreementScanPanel}
+    ${otherDocumentsPanel}
     <div class="detail-list upgraded">${fields.map(([label, value]) => `<p><strong>${escapeHtml(label)}</strong>${formatDetailValue(value)}</p>`).join("")}</div>`;
   const detailActions = $(".detail-actions", $("#detailBody"));
   if (detailActions) {
@@ -1521,9 +1829,32 @@ function openDetails(profile) {
     addAction(detailActions, "Print Agreement", "btn-blue", () => openAgreementPrint(profile));
     if (state.session.role === "admin") {
       addAction(detailActions, "Upload Agreement Scan", "btn-green", () => uploadAgreementScan(profile));
+      addAction(detailActions, "Other Documents", "btn-blue", () => uploadOtherDocument(profile));
     }
   }
   openModal("detailModal");
+}
+
+function normalizeOtherDocuments(profile = {}) {
+  const raw = profile.otherDocuments || profile.otherDocumentUrls || profile.otherDocs || [];
+  let list = raw;
+  if (typeof raw === "string") {
+    try {
+      list = JSON.parse(raw);
+    } catch (error) {
+      list = raw.split(/[\n,]+/).map((url) => url.trim()).filter(Boolean);
+    }
+  }
+  if (!Array.isArray(list)) list = [];
+  return list
+    .map((item, index) => {
+      if (typeof item === "string") return { name: `Document ${index + 1}`, url: item };
+      return {
+        name: item?.name || item?.fileName || item?.title || `Document ${index + 1}`,
+        url: item?.url || item?.link || item?.fileUrl || "",
+      };
+    })
+    .filter((item) => item.url);
 }
 
 function updateProfileInState(updatedProfile) {
@@ -1583,6 +1914,16 @@ function uploadAgreementScan(profile) {
   openModal("agreementUploadModal");
 }
 
+function uploadOtherDocument(profile) {
+  if (!state.session || state.session.role !== "admin") return toast("Only admin can upload other documents");
+  activeAgreementUploadProfile = profile;
+  const form = $("#otherDocumentUploadForm");
+  if (!form) return;
+  form.reset();
+  if ($("#otherDocumentUploadClient")) $("#otherDocumentUploadClient").textContent = `${profile.fullName || "Client"}${profile.id ? ` (${profile.id})` : ""}`;
+  openModal("otherDocumentUploadModal");
+}
+
 async function submitAgreementScanUpload(event) {
   event.preventDefault();
   const form = event.target;
@@ -1603,6 +1944,35 @@ async function submitAgreementScanUpload(event) {
     await loadDashboardData();
     closeModals();
     toast("Agreement scan uploaded");
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+async function submitOtherDocumentUpload(event) {
+  event.preventDefault();
+  const form = event.target;
+  const file = form.otherDocumentFile?.files?.[0];
+  const profile = activeAgreementUploadProfile;
+  if (!file || !profile?.id) return;
+  try {
+    const dataUrl = await fileToDataUrl(file);
+    const documentName = form.otherDocumentName?.value || file.name || "Other document";
+    const result = await api("uploadOtherDocument", {
+      token: state.session.token,
+      id: profile.id,
+      fileName: file.name || "other-document",
+      documentName,
+      file: dataUrl,
+    });
+    if (!result.ok) throw new Error(result.error || "Other document upload failed");
+    const existingDocuments = normalizeOtherDocuments(profile);
+    const uploadedDocument = result.document || { name: documentName, url: result.url };
+    updateProfileInState(result.profile || { ...profile, otherDocuments: [...existingDocuments, uploadedDocument] });
+    activeAgreementUploadProfile = null;
+    await loadDashboardData();
+    closeModals();
+    toast("Other document uploaded");
   } catch (error) {
     toast(error.message);
   }
@@ -1688,8 +2058,9 @@ function openAgreementPrint(profile) {
 
         <div class="agreement-header-text">
           <h1>বিবাহ বন্ধন</h1>
-          <p>Marriage Bureau & Matrimonial Service</p>
+          <p>Marriage Bureau Office</p>
 
+          <small>Registration No.: 1852</small>
           <small>অফিস: তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭</small>
           <small>মোবাইল / WhatsApp: 9064899089</small>
         </div>
@@ -2257,22 +2628,22 @@ function openAgreementPrint(profile) {
 
       <div class="declaration-box">
 
-        <p>
-          আমি ${escapeHtml(profile.fullName || "________________")}
-          ঘোষণা করছি যে, আমি এই Agreement-এর সমস্ত তথ্য,
-          শর্তাবলী এবং Service Charge সম্পর্কে অবগত হয়েছি।
-        </p>
-
-        <p>
-          আমি স্বেচ্ছায় এই Agreement গ্রহণ করছি এবং আমার
-          দেওয়া তথ্য সঠিক বলে নিশ্চিত করছি।
-        </p>
-
-        <p>
-          ভবিষ্যতে কোনো পরিচয়, সম্পর্ক, আর্থিক লেনদেন বা
-          বিবাহ সংক্রান্ত সিদ্ধান্ত নেওয়ার আগে আমি নিজ দায়িত্বে
-          প্রয়োজনীয় যাচাই করব।
-        </p>
+        <ol class="declaration-list">
+          <li>
+            আমি ${escapeHtml(profile.fullName || "________________")}
+            ঘোষণা করছি যে, আমি এই Agreement-এর সমস্ত তথ্য,
+            শর্তাবলী এবং Service Charge সম্পর্কে অবগত হয়েছি।
+          </li>
+          <li>
+            আমি স্বেচ্ছায় এই Agreement গ্রহণ করছি এবং আমার
+            দেওয়া তথ্য সঠিক বলে নিশ্চিত করছি।
+          </li>
+          <li>
+            ভবিষ্যতে কোনো পরিচয়, সম্পর্ক, আর্থিক লেনদেন বা
+            বিবাহ সংক্রান্ত সিদ্ধান্ত নেওয়ার আগে আমি নিজ দায়িত্বে
+            প্রয়োজনীয় যাচাই করব।
+          </li>
+        </ol>
 
       </div>
 
@@ -2773,3 +3144,17 @@ if ("serviceWorker" in navigator) {
       .catch(err => console.log(err));
   });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
