@@ -1516,7 +1516,7 @@ function openDetails(profile) {
     ["পছন্দের গায়ের রং", profile.prefComplexion], ["পছন্দের শিক্ষা", profile.prefEducationLevel],
     ["পছন্দের বয়স", profile.prefAgeRange], ["পছন্দের উচ্চতা", profile.prefHeight],
     ["পছন্দের পেশা", profile.prefLivelihood], 
-    ["যোগাযোগ", "এই প্রোফাইল পছন্দ হলে আমাদের অফিসে অথবা এজেন্টের সঙ্গে যোগাযোগ করুন। অফিস নম্বর - 9064899089."]
+    ["যোগাযোগ", "এই প্রোফাইল পছন্দ হলে আমাদের অফিসে অথবা এজেন্টের সঙ্গে যোগাযোগ করুন। অফিস নম্বর - 9475272791."]
   ];
   const privateFields = [
     ["ID", profile.id], ["বয়স", profile.age], ["লিঙ্গ", profile.gender],
@@ -2854,6 +2854,7 @@ if ("serviceWorker" in navigator) {
       .catch(err => console.log(err));
   });
 }
+
 
 
 
