@@ -501,7 +501,14 @@
     .thumb { width: 52px; height: 65px; object-fit: cover; border-radius: 7px; background: #f2e3dc; }
     .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
     .row-actions .btn { min-height: 34px; padding: 6px 9px; font-size: .78rem; }
-    .detail-actions { margin-bottom: 14px; }
+    .detail-photo { cursor: zoom-in; }
+    .profile-photo-viewer { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(12,8,8,.96); }
+    .profile-photo-viewer.open { display: flex; }
+    .profile-photo-viewer-img { max-width: 96vw; max-height: 88vh; width: auto; height: auto; object-fit: contain; border-radius: 8px; box-shadow: 0 20px 70px rgba(0,0,0,.5); }
+    .profile-photo-viewer-close { position: absolute; top: 16px; right: 18px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255,255,255,.14); color: #fff; font-size: 30px; line-height: 1; cursor: pointer; z-index: 2; }
+    .profile-photo-viewer-caption { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); color: #fff; background: rgba(0,0,0,.45); padding: 8px 14px; border-radius: 999px; font-size: .85rem; font-weight: 700; white-space: nowrap; }
+    body.photo-viewer-open { overflow: hidden; }
+.detail-actions { margin-bottom: 14px; }
     .status { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 9px; font-weight: 900; font-size: .78rem; }
     .status.verified, .status.active { color: #0d6848; background: #e7f6ef; }
     .status.pending { color: #9a5d00; background: #fff3d5; }
@@ -769,7 +776,7 @@
     .amount-credit { color: var(--green); }
     .amount-debit { color: #b42331; }
     .receipt-paper { position: relative; overflow: hidden; width: 4in; min-height: 5.82in; margin: 0 auto; background: linear-gradient(180deg, #fffdfb 0%, #fff 44%, #fffaf7 100%); border: 1px solid #b99a8b; border-radius: 6px; padding: .14in .18in .18in; color: var(--ink); font-family: "Hind Siliguri", "Inter", sans-serif; box-shadow: 0 12px 30px rgba(87,31,27,.12); }
-    .receipt-paper::before { content: "BB"; position: absolute; inset: 1.32in 0 auto; text-align: center; color: rgba(167,25,63,.055); font-family: "Inter", sans-serif; font-size: 1.75in; font-weight: 900; letter-spacing: .08em; pointer-events: none; }
+    .receipt-paper::before { content: ""; position: absolute; top: 1.18in; left: 50%; width: 2.15in; height: 1.55in; transform: translateX(-50%); background: url("bfi.png") center / contain no-repeat; opacity: .07; pointer-events: none; }
     .receipt-paper::after { content: ""; position: absolute; inset: 8px; border: 1px solid rgba(167,25,63,.16); border-radius: 4px; pointer-events: none; }
     .receipt-paper > * { position: relative; z-index: 1; }
     .receipt-paper.receipt-a4 { width: 190mm; min-height: 260mm; padding: 10mm; }
@@ -3921,7 +3928,5 @@
   <script src="index.js?v=20260811-3"></script>
 </body>
 </html>
-
-
 
 

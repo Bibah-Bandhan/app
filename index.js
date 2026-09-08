@@ -59,8 +59,9 @@ function normalizeAgentPayload(payload = {}) {
   return data;
 }
 
-const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000;
+const INACTIVITY_TIMEOUT_MS = 3 * 60 * 1000;
 let inactivityTimer = null;
+let lastActivityAt = 0;
 let activeReceiptTitle = "";
 let activeNoteContext = null;
 let activeMarriageProfile = null;
@@ -82,15 +83,25 @@ function bindActivityTracking() {
 function resetInactivityTimer() {
   if (!state.session) return;
   clearInactivityTimer();
-  inactivityTimer = setTimeout(() => {
-    toast("Session expired due to inactivity");
-    logout();
-  }, INACTIVITY_TIMEOUT_MS);
+  lastActivityAt = Date.now();
+  inactivityTimer = setTimeout(checkInactivityTimeout, INACTIVITY_TIMEOUT_MS + 250);
+}
+
+function checkInactivityTimeout() {
+  if (!state.session) return clearInactivityTimer();
+  const inactiveFor = Date.now() - lastActivityAt;
+  if (inactiveFor >= INACTIVITY_TIMEOUT_MS) {
+    clearInactivityTimer();
+    logout(true);
+    return;
+  }
+  inactivityTimer = setTimeout(checkInactivityTimeout, INACTIVITY_TIMEOUT_MS - inactiveFor + 250);
 }
 
 function clearInactivityTimer() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
+  lastActivityAt = 0;
 }
 
 function bindCodeProtection() {
@@ -1718,6 +1729,146 @@ async function submitPayment(event) {
     button.textContent = "Save Payment";
   }
 }
+function shareProfileName(fullName = "") {
+  const words = String(fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "";
+  if (words.length === 1) return words[0];
+  return `${words[0].charAt(0).toUpperCase()}. ${words.slice(1).join(" ")}`;
+}
+
+function buildShareProfileText(profile = {}) {
+  const officeName = "বিবাহ বন্ধন";
+  const officeAddress = "তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭";
+  const officePhone = "9475272791";
+  const website = "https://bibah-bandhan.com/";
+  const ps = profile.policestation || profile.policeStation || "";
+  return [
+    officeName,
+    "উপযুক্ত পাত্র-পাত্রীর জন্য একটি প্রোফাইল", "",
+    `ছবি: ${photoUrl(profile.photo) ? "প্রোফাইলে সংযুক্ত" : "নেই"}`,
+    `ID: ${profile.id || "-"}`,
+    `নাম: ${shareProfileName(profile.fullName) || "-"}`,
+    `বয়স: ${profile.age || "-"}`,
+    `উচ্চতা: ${profile.height || "-"}`,
+    `শিক্ষা: ${profile.education || "-"}`,
+    `পেশা: ${profile.occupation || "-"}`,
+    `PS: ${ps || "-"}`,
+    `জেলা: ${profile.district || "-"}`, "",
+    "এই শেয়ার প্রোফাইলে কোনো ব্যক্তিগত/সংবেদনশীল তথ্য প্রকাশ করা হয়নি।", "",
+    officeName, `ঠিকানা: ${officeAddress}`, `অফিস যোগাযোগ: ${officePhone}`, `Website: ${website}`, "",
+    "আপনার পছন্দের প্রোফাইল হলে অফিসে যোগাযোগ করুন।"
+  ].join("\n");
+}
+
+async function copyShareProfile(profile) {
+  const text = buildShareProfileText(profile);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (error) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text; textarea.style.position = "fixed"; textarea.style.opacity = "0";
+    document.body.appendChild(textarea); textarea.select(); document.execCommand("copy"); textarea.remove();
+  }
+  toast("Share profile text copied");
+}
+
+async function profilePhotoFile(profile) {
+  const photo = photoUrl(profile?.photoUrl || profile?.photo || profile?.image || profile?.picture || profile?.avatar);
+  if (!photo) return null;
+  try {
+    if (photo.startsWith("data:image/")) {
+      const [header, data] = photo.split(",", 2);
+      const mime = header.match(/data:([^;]+)/i)?.[1] || "image/jpeg";
+      const binary = atob(data || "");
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+      const extension = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+      return new File([bytes], `profile-${profile.id || "share"}.${extension}`, { type: mime });
+    }
+    const driveId = photo.match(/(?:id=|\/d\/)([-\w]{20,})/)?.[1];
+    const candidates = driveId && photo.includes("drive.google.com")
+      ? [`https://drive.google.com/uc?export=download&id=${driveId}`, photo]
+      : [photo];
+    for (const candidate of candidates) {
+      try {
+        const response = await fetch(candidate, { mode: "cors", cache: "no-store" });
+        if (!response.ok) continue;
+        const blob = await response.blob();
+        if (!blob.type.startsWith("image/")) continue;
+        const extension = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+        return new File([blob], `profile-${profile.id || "share"}.${extension}`, { type: blob.type });
+      } catch (error) {
+        // Some Drive endpoints do not allow browser CORS; try the next URL.
+      }
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function copyProfilePhoto(profile) {
+  const file = await profilePhotoFile(profile);
+  if (!file || !navigator.clipboard || typeof ClipboardItem === "undefined") {
+    toast("ছবিটি কপি করা যাচ্ছে না; WhatsApp Share ব্যবহার করুন");
+    return;
+  }
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ [file.type]: file })]);
+    toast("Profile photo copied");
+  } catch (error) {
+    toast("ছবিটি কপি করা যাচ্ছে না; WhatsApp Share ব্যবহার করুন");
+  }
+}
+
+async function shareProfileToWhatsApp(profile) {
+  const photo = photoUrl(profile?.photoUrl || profile?.photo || profile?.image || profile?.picture || profile?.avatar);
+  const photoLink = /^https?:\/\//i.test(photo) ? `\nছবির লিংক: ${photo}` : "";
+  const text = `${buildShareProfileText(profile)}${photoLink}`;
+  const file = await profilePhotoFile(profile);
+  if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        title: `${shareProfileName(profile.fullName)} - ${profile.id || "Profile"}`,
+        text,
+        files: [file]
+      });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  if (file) toast("WhatsApp text opened. এই browser-এ সরাসরি photo attachment support নেই");
+}
+
+function openProfilePhotoViewer(profile) {
+  const photo = photoUrl(profile?.photo);
+  if (!photo) return;
+  let viewer = $("#profilePhotoViewer");
+  if (!viewer) {
+    viewer = document.createElement("div");
+    viewer.id = "profilePhotoViewer";
+    viewer.className = "profile-photo-viewer";
+    viewer.innerHTML = `<button type="button" class="profile-photo-viewer-close" aria-label="Close">×</button><div class="profile-photo-viewer-caption"></div><img class="profile-photo-viewer-img" alt="">`;
+    document.body.appendChild(viewer);
+    viewer.addEventListener("click", (event) => { if (event.target === viewer || event.target.closest(".profile-photo-viewer-close")) closeProfilePhotoViewer(); });
+  }
+  viewer.querySelector(".profile-photo-viewer-img").src = photo;
+  viewer.querySelector(".profile-photo-viewer-img").alt = profile.fullName || "Profile photo";
+  viewer.querySelector(".profile-photo-viewer-caption").textContent = `${shareProfileName(profile.fullName) || "Profile"} · ID: ${profile.id || "-"}`;
+  viewer.classList.add("open");
+  document.body.classList.add("photo-viewer-open");
+}
+
+function closeProfilePhotoViewer() {
+  $("#profilePhotoViewer")?.classList.remove("open");
+  document.body.classList.remove("photo-viewer-open");
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeProfilePhotoViewer();
+});
+
 function openDetails(profile) {
   $("#detailTitle").textContent = profile.fullName || "Profile";
   const photo = photoUrl(profile.photo);
@@ -1814,6 +1965,8 @@ function openDetails(profile) {
     ${agreementScanPanel}
     ${otherDocumentsPanel}
     <div class="detail-list upgraded">${fields.map(([label, value]) => `<p><strong>${escapeHtml(label)}</strong>${formatDetailValue(value)}</p>`).join("")}</div>`;
+  $("#detailBody .detail-photo")?.addEventListener("dblclick", () => openProfilePhotoViewer(profile));
+
   const detailActions = $(".detail-actions", $("#detailBody"));
   if (detailActions) {
     addAction(detailActions, "Edit", "btn-gold", () => openProfileForm(profile));
@@ -1830,9 +1983,47 @@ function openDetails(profile) {
     if (state.session.role === "admin") {
       addAction(detailActions, "Upload Agreement Scan", "btn-green", () => uploadAgreementScan(profile));
       addAction(detailActions, "Other Documents", "btn-blue", () => uploadOtherDocument(profile));
+      addAction(detailActions, "Share PDF", "btn-green", () => openProfilePdf(profile));
     }
   }
   openModal("detailModal");
+}
+
+function openProfilePdf(profile) {
+  if (!profile?.id) return toast("Client profile not found");
+  const photo = photoUrl(profile.photoUrl || profile.photo || profile.image || profile.picture || profile.avatar);
+  const fields = [
+    ["Profile ID", profile.id],
+    ["Age", profile.age], ["Gender", profile.gender], ["Height", profile.height],
+    ["Complexion", profile.complexion],
+    ["Education", profile.education], ["Occupation", profile.occupation],
+    ["Marital Status", profile.maritalStatus], ["Religion", profile.religion],
+    ["Gotra", profile.gotra], ["Rashi", profile.rashi],
+    ["Police Station", profile.policestation || profile.policeStation],
+    ["District", profile.district], ["State", profile.state],
+  ].filter(([, value]) => value);
+  activeReceiptTitle = `${sanitizeFileName(shareProfileName(profile.fullName) || profile.id)} profile`;
+  if ($("#receiptModalTitle")) $("#receiptModalTitle").textContent = "Profile PDF Preview";
+  if ($("#printReceiptBtn")) $("#printReceiptBtn").textContent = "Save Profile PDF";
+  if ($("#receiptSize")) $("#receiptSize").value = "a4";
+  setActivePrintMode("agreement");
+  $("#receiptBody").innerHTML = `
+    <div class="receipt-paper receipt-a4" id="receiptPrintArea" style="padding:34px;background:#fff;color:#241816;font-family:Arial,'Noto Sans Bengali',sans-serif">
+      <div style="display:flex;align-items:center;gap:18px;border-bottom:3px solid #a7193f;padding-bottom:18px">
+        <img src="bfi.png" alt="বিবাহ বন্ধন" style="width:92px;height:62px;object-fit:contain">
+        <div style="flex:1"><h1 style="margin:0;color:#a7193f;font-size:27px">বিবাহ বন্ধন</h1><p style="margin:4px 0 0;color:#6d5550;font-size:13px">Marriage Bureau Office</p><p style="margin:5px 0 0;color:#6d5550;font-size:11px">তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭</p></div>
+        <div style="border:1px solid #e6c4c9;padding:10px 14px;text-align:center;background:#fff7f8"><small style="display:block;color:#7b4754;font-size:10px">PROFILE ID</small><strong style="font-size:16px;color:#66102b">${escapeHtml(profile.id)}</strong></div>
+      </div>
+      <div style="display:flex;gap:24px;margin-top:28px;align-items:flex-start">
+        <div style="width:190px;flex:0 0 190px">${photo ? `<img src="${escapeAttr(photo)}" alt="Client photo" style="width:190px;height:238px;object-fit:cover;border:5px solid #f4e0d9;border-radius:8px">` : `<div style="width:190px;height:238px;display:grid;place-items:center;background:#f7e9e3;color:#a7193f;border-radius:8px;font-weight:700">CLIENT PHOTO</div>`}</div>
+        <div style="flex:1"><h2 style="margin:0 0 14px;color:#66102b;font-size:22px">${escapeHtml(shareProfileName(profile.fullName) || "Client Profile")}</h2><div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid #eadbd2">${fields.map(([label, value]) => `<div style="padding:10px 12px;border-bottom:1px solid #eadbd2"><small style="display:block;color:#866b64;font-size:10px;text-transform:uppercase">${escapeHtml(label)}</small><strong style="display:block;margin-top:3px;font-size:13px">${escapeHtml(value)}</strong></div>`).join("")}</div></div>
+      </div>
+      <div style="margin-top:28px;padding:14px 16px;background:#fff7f2;border-left:4px solid #d8a43a;font-size:12px;line-height:1.8"><strong style="display:block;color:#66102b;font-size:14px;margin-bottom:4px">একটি সুন্দর সম্পর্কের শুরু হোক পারস্পরিক পছন্দ, বিশ্বাস ও বোঝাপড়ার মাধ্যমে।</strong>প্রোফাইলটি আপনাদের পছন্দ হলে পরিবারের সঙ্গে আলোচনা করে পরবর্তী কথাবার্তা এগিয়ে নিতে পারেন।<br><span style="display:block;margin-top:5px;text-align:right;color:#a7193f;font-weight:700">— বিবাহ বন্ধন</span></div>
+      <div style="margin-top:24px;padding:14px 16px;border:1px solid #eadbd2;background:#fff;color:#6d5550;font-size:11px;line-height:1.7"><strong style="color:#a7193f">বিবাহ বন্ধন Marriage Bureau</strong><br>তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭<br>অফিস যোগাযোগ: 9475272791<br>Website: https://bibah-bandhan.com/</div>
+    </div>`;
+  setReceiptPrintSize("a4");
+  closeModals();
+  openModal("receiptModal");
 }
 
 function normalizeOtherDocuments(profile = {}) {
@@ -2766,7 +2957,7 @@ function showProfileSuccess(name, id, isUpdate) {
   $("#successProfileId").textContent = id ? `Profile ID: ${id}` : "Profile ID save হওয়ার পর পাওয়া যাবে";
   openModal("successModal");
 }
-function logout() {
+function logout(expired = false) {
   clearInactivityTimer();
   state.session = null;
   state.activeTab = "profiles";
@@ -2774,7 +2965,7 @@ function logout() {
   $("#dashboardSection").classList.add("hidden");
   $$(".public-view").forEach((element) => element.classList.remove("hidden"));
   window.scrollTo({ top: 0, behavior: "smooth" });
-  toast("Logged out");
+  toast(expired ? "Session expired due to inactivity" : "Logged out");
 }
 
 function openModal(id) {
@@ -2821,7 +3012,7 @@ function normalizeMessage(message) {
   const raw = String(message || "").trim();
   const isError = /failed|error|required|invalid|delete failed|save failed|login failed|loading failed|update failed|not allowed|expired|সঠিক|দিন/i.test(raw);
   const successMap = {
-    "Login successful": ["লগইন সফল হয়েছে", "আপনি সফলভাবে dashboard-এ প্রবেশ করেছেন।"],
+    "Login successful": ["Login Successful", "আপনি সফলভাবে dashboard-এ প্রবেশ করেছেন।"],
     "Logged out": ["লগআউট সম্পন্ন হয়েছে", "আপনি সফলভাবে account থেকে বের হয়েছেন।"],
     "Status updated": ["স্ট্যাটাস আপডেট হয়েছে", "Client profile-এর status সফলভাবে পরিবর্তন করা হয়েছে।"],
     "Profile deleted": ["প্রোফাইল ডিলিট হয়েছে", "Client profile list থেকে এই profile সরানো হয়েছে।"],
@@ -2845,7 +3036,7 @@ function normalizeMessage(message) {
     return { type: "success", title: "Payment সেভ হয়েছে", text: "Client payment details সফলভাবে সেভ করা হয়েছে।", detail: id ? `Payment ID: ${id}` : "" };
   }
   if (raw === "Session expired due to inactivity") {
-    return { type: "info", title: "Session শেষ হয়েছে", text: "২ মিনিট কোনো কাজ না হওয়ায় নিরাপত্তার জন্য আপনাকে logout করা হয়েছে।" };
+    return { type: "info", title: "Session Expired", text: "logout করা হয়েছে।" };
   }
   if (isError) {
     return { type: "error", title: "কাজটি সম্পন্ন হয়নি", text: "দয়া করে তথ্যগুলো আরেকবার দেখে আবার চেষ্টা করুন।", detail: raw || "Unknown error" };
@@ -3144,17 +3335,3 @@ if ("serviceWorker" in navigator) {
       .catch(err => console.log(err));
   });
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
