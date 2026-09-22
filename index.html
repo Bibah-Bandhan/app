@@ -2759,6 +2759,29 @@
       box-sizing: border-box !important;
       overflow-wrap: anywhere !important;
     }
+    .meeting-toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+    }
+    .meeting-pair-preview {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff8f4;
+      color: var(--brown);
+    }
+    .meeting-pair-preview span {
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 720px) {
+      .meeting-pair-preview { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body class="bn protect-page">
@@ -3687,8 +3710,8 @@
                 <small class="form-note">Photo will be saved in one fixed portrait size. Drag the photo to adjust face position, then use the cropped photo.</small>
               </div>
               <div class="form-actions" style="justify-content:flex-start">
-                <button class="btn btn-primary" type="button" id="applyCropBtn">Use Cropped Photo</button>
-                <button class="btn btn-soft" type="button" id="resetCropBtn">Reset</button>
+                
+                <button class="btn btn-soft" type="button" id="resetCropBtn">Photo Set</button>
               </div>
             </div>
           </div>          <div class="consent-panel">
@@ -3762,6 +3785,96 @@
     </div>
   </div>
 
+
+  <div class="modal" id="meetingModal" aria-hidden="true">
+    <div class="modal-card" style="width:min(760px,96vw)">
+      <div class="modal-head">
+        <h3>Meeting Schedule</h3>
+        <button class="btn btn-icon btn-soft" type="button" data-close-modal>×</button>
+      </div>
+      <div class="modal-body">
+        <form id="meetingForm" class="form-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+          <input type="hidden" name="meetingId">
+          <datalist id="meetingProfileOptions"></datalist>
+          <div class="field">
+            <label>Male Profile ID</label>
+            <input name="maleProfileId" list="meetingProfileOptions" placeholder="BB-M / BND ID" required>
+          </div>
+          <div class="field">
+            <label>Female Profile ID</label>
+            <input name="femaleProfileId" list="meetingProfileOptions" placeholder="BB-F / BND ID" required>
+          </div>
+          <div class="meeting-pair-preview" id="meetingPairPreview"></div>
+          <div class="field">
+            <label>Meeting Date</label>
+            <input name="meetingDate" type="date" required>
+          </div>
+          <div class="field">
+            <label>Meeting Time</label>
+            <input name="meetingTime" type="time" required>
+          </div>
+          <div class="field">
+            <label>Duration</label>
+            <select name="duration">
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60">60 min</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Meeting Type</label>
+            <select name="meetingType">
+              <option>Family Meeting</option>
+              <option>Client Meeting</option>
+              <option>Follow-up Meeting</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select name="status">
+              <option>Proposed</option>
+              <option>Scheduled</option>
+              <option>Confirmed</option>
+              <option>Completed</option>
+              <option>Follow-up</option>
+              <option>Cancelled</option>
+              <option>No Show</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Next Action Date</label>
+            <input name="nextActionDate" type="date">
+          </div>
+          <div class="field">
+            <label>Male Family Opinion</label>
+            <select name="maleFamilyOpinion">
+              <option value="">Not recorded</option>
+              <option>Interested</option>
+              <option>Not Interested</option>
+              <option>Need More Time</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Female Family Opinion</label>
+            <select name="femaleFamilyOpinion">
+              <option value="">Not recorded</option>
+              <option>Interested</option>
+              <option>Not Interested</option>
+              <option>Need More Time</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label>Admin Remarks</label>
+            <textarea name="adminRemarks" rows="4" placeholder="Meeting result, follow-up note, family feedback"></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-soft" type="button" data-close-modal>Close</button>
+            <button class="btn btn-primary" type="submit">Save Meeting</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
   <div class="modal" id="profileNoteModal" aria-hidden="true">
     <div class="modal-card message-card">
       <div class="modal-head">
@@ -3928,5 +4041,6 @@
   <script src="index.js?v=20260811-3"></script>
 </body>
 </html>
+
 
 

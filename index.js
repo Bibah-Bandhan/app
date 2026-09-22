@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4gQHKykWExnU_dkGSEl-2fMY-7pkpe5-BblvTIZDLAvW5n2fmmEIDO-2-wUhmQHb37w/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwRKZKJof-5OlCZn6LT_oMdLUvy-gSq8LNjHTaaK2VKkah4vwV-Zesp2K1Q_3AbLE9F4A/exec";
 
 const state = {
   profiles: [],
@@ -145,6 +145,7 @@ function bindUi() {
     });
   }
   if ($("#paymentForm")) $("#paymentForm").addEventListener("submit", submitPayment);
+  if ($("#meetingForm")) $("#meetingForm").addEventListener("submit", submitMeeting);
   if ($("#profileNoteForm")) $("#profileNoteForm").addEventListener("submit", submitProfileNote);
   if ($("#marriageForm")) $("#marriageForm").addEventListener("submit", submitMarriageComplete);
   if ($("#serviceAgreementForm")) $("#serviceAgreementForm").addEventListener("submit", submitServiceAgreement);
@@ -268,6 +269,7 @@ async function loadDashboardData() {
   state.payments = cleanPayments(result.payments || []);
   state.agentPayouts = cleanAgentPayouts(result.agentPayouts || []);
   state.commonExpenses = cleanCommonExpenses(result.commonExpenses || []);
+  state.meetings = cleanMeetings(result.meetings || []);
   state.currentAgent = result.currentAgent || null;
   state.stories = cleanStories(result.stories || []);
   renderAgentDashboardPhoto(state.currentAgent);
@@ -460,7 +462,7 @@ function renderAgentDashboardPhoto(agent) {
 function renderTabs() {
   const tabs = $("#dashboardTabs");
   const items = state.session.role === "admin"
-    ? [["profiles", "Profiles"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agents", "Agents"], ["agentPayouts", "Agent Payouts"], ["commonExpenses", "Expense Book"], ["agentForm", "Create Agent"], ["selfDeclaration", "Self Declaration"], ["stories", "Stories"]]
+    ? [["profiles", "Profiles"], ["meetings", "Meeting Schedule"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agents", "Agents"], ["agentPayouts", "Agent Payouts"], ["commonExpenses", "Expense Book"], ["agentForm", "Create Agent"], ["selfDeclaration", "Self Declaration"], ["stories", "Stories"]]
     : [["profiles", "My Clients"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agentPayouts", "My Payouts"], ["myAccount", "My Account"]];
   tabs.innerHTML = "";
   items.forEach(([key, label]) => {
@@ -510,6 +512,8 @@ function renderDashboard() {
     renderAgentPayoutTable();
   } else if (state.activeTab === "commonExpenses" && state.session.role === "admin") {
     renderCommonExpenseTable();
+  } else if (state.activeTab === "meetings" && state.session.role === "admin") {
+    renderMeetingTable();
   } else if (state.activeTab === "marriages") {
     renderMarriageTable();
   } else if (state.activeTab === "agents" && state.session.role === "admin") {
@@ -691,6 +695,142 @@ function renderMarriageTable() {
   });
 }
 
+function renderMeetingTable() {
+  const meetings = cleanMeetings(state.meetings || []).sort((a, b) => `${a.meetingDate || ""} ${a.meetingTime || ""}`.localeCompare(`${b.meetingDate || ""} ${b.meetingTime || ""}`));
+  const today = new Date().toISOString().slice(0, 10);
+  const todaysMeetings = meetings.filter((meeting) => meeting.meetingDate === today && !["cancelled", "no show"].includes(normalize(meeting.status)));
+  $("#tableHead").innerHTML = `<tr><th>Date</th><th>Time</th><th>Male Profile</th><th>Female Profile</th><th>Type</th><th>Status</th><th>Next Action</th><th>Actions</th></tr>`;
+  const body = $("#tableBody");
+  body.innerHTML = `
+    <tr>
+      <td colspan="8">
+        <div class="meeting-toolbar">
+          <button class="btn btn-primary" type="button" id="newMeetingBtn">+ New Meeting</button>
+          <strong>Today's Meetings: ${todaysMeetings.length}</strong>
+          <span class="note">Schedule family meetings, record result and follow-up from here.</span>
+        </div>
+      </td>
+    </tr>`;
+  $("#newMeetingBtn")?.addEventListener("click", () => openMeetingModal());
+  if (!meetings.length) {
+    body.insertAdjacentHTML("beforeend", `<tr><td colspan="8">No meeting scheduled yet.</td></tr>`);
+    return;
+  }
+  meetings.forEach((meeting) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(formatDate(meeting.meetingDate) || meeting.meetingDate || "")}</td>
+      <td>${escapeHtml(meeting.meetingTime || "")}</td>
+      <td><strong>${escapeHtml(meeting.maleName || "")}</strong><br><span class="note">${escapeHtml(meeting.maleProfileId || "")}</span></td>
+      <td><strong>${escapeHtml(meeting.femaleName || "")}</strong><br><span class="note">${escapeHtml(meeting.femaleProfileId || "")}</span></td>
+      <td>${escapeHtml(meeting.meetingType || "Family Meeting")}<br><span class="note">${escapeHtml(meeting.duration || "45")} min</span></td>
+      <td>${statusBadge(meeting.status || "Scheduled")}</td>
+      <td>${escapeHtml(formatDate(meeting.nextActionDate) || meeting.nextActionDate || "")}</td>
+      <td><div class="row-actions"></div></td>`;
+    const actions = tr.querySelector(".row-actions");
+    addAction(actions, "Edit", "btn-blue", () => openMeetingModal(meeting));
+    addAction(actions, "Result", "btn-gold", () => openMeetingModal({ ...meeting, status: meeting.status || "Completed" }));
+    addAction(actions, "Delete", "btn-danger", () => deleteMeeting(meeting));
+    body.appendChild(tr);
+  });
+}
+
+function openMeetingModal(meeting = {}, profile = null) {
+  activeMeetingContext = meeting || {};
+  const form = $("#meetingForm");
+  if (!form) return toast("Meeting form not found");
+  form.reset();
+  fillMeetingProfileOptions();
+  form.elements.meetingId.value = meeting.meetingId || "";
+  form.elements.status.value = meeting.status || "Scheduled";
+  form.elements.meetingDate.value = formatDate(meeting.meetingDate) || new Date().toISOString().slice(0, 10);
+  form.elements.meetingTime.value = meeting.meetingTime || "11:00";
+  form.elements.duration.value = meeting.duration || "45";
+  form.elements.meetingType.value = meeting.meetingType || "Family Meeting";
+  form.elements.maleProfileId.value = meeting.maleProfileId || "";
+  form.elements.femaleProfileId.value = meeting.femaleProfileId || "";
+  form.elements.maleFamilyOpinion.value = meeting.maleFamilyOpinion || "";
+  form.elements.femaleFamilyOpinion.value = meeting.femaleFamilyOpinion || "";
+  form.elements.nextActionDate.value = formatDate(meeting.nextActionDate) || "";
+  form.elements.adminRemarks.value = meeting.adminRemarks || "";
+
+  if (profile?.id && !meeting.meetingId) {
+    if (isMaleProfile(profile)) form.elements.maleProfileId.value = profile.id;
+    else if (isFemaleProfile(profile)) form.elements.femaleProfileId.value = profile.id;
+  }
+  updateMeetingPairPreview();
+  ["maleProfileId", "femaleProfileId"].forEach((name) => {
+    form.elements[name].oninput = updateMeetingPairPreview;
+  });
+  openModal("meetingModal");
+}
+
+function fillMeetingProfileOptions() {
+  const datalist = $("#meetingProfileOptions");
+  if (!datalist) return;
+  datalist.innerHTML = activeClientProfiles().map((profile) => `<option value="${escapeAttr(profile.id || "")}">${escapeHtml([profile.fullName, profile.gender, profile.age, profile.district].filter(Boolean).join(" | "))}</option>`).join("");
+}
+
+function updateMeetingPairPreview() {
+  const form = $("#meetingForm");
+  const preview = $("#meetingPairPreview");
+  if (!form || !preview) return;
+  const male = findProfileById(form.elements.maleProfileId.value);
+  const female = findProfileById(form.elements.femaleProfileId.value);
+  preview.innerHTML = `
+    <span><strong>Male:</strong> ${escapeHtml(profileLabel(male) || form.elements.maleProfileId.value || "Not selected")}</span>
+    <span><strong>Female:</strong> ${escapeHtml(profileLabel(female) || form.elements.femaleProfileId.value || "Not selected")}</span>`;
+}
+
+async function submitMeeting(event) {
+  event.preventDefault();
+  if (state.session?.role !== "admin") return toast("Only admin can save meetings");
+  const button = event.target.querySelector("button[type='submit']");
+  button.disabled = true;
+  button.textContent = "Saving...";
+  try {
+    const payload = Object.fromEntries(new FormData(event.target).entries());
+    const result = await api("saveMeeting", { ...payload, token: state.session.token });
+    if (!result.ok) throw new Error(result.error || "Meeting save failed");
+    closeModals();
+    await loadDashboardData();
+    state.activeTab = "meetings";
+    renderTabs();
+    renderDashboard();
+    toast(`Meeting saved: ${result.meeting?.meetingId || ""}`);
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save Meeting";
+  }
+}
+
+async function deleteMeeting(meeting) {
+  if (!meeting?.meetingId) return toast("Meeting ID missing");
+  if (!confirm(`Delete meeting ${meeting.meetingId}?`)) return;
+  const result = await api("deleteMeeting", { token: state.session.token, meetingId: meeting.meetingId });
+  if (!result.ok) return toast(result.error || "Meeting delete failed");
+  await loadDashboardData();
+  toast("Meeting deleted");
+}
+
+function findProfileById(id) {
+  return cleanProfiles(state.profiles).find((profile) => String(profile.id || "") === String(id || "")) || null;
+}
+
+function profileLabel(profile) {
+  if (!profile) return "";
+  return [profile.fullName, profile.id, profile.gender, profile.age ? `${profile.age} yrs` : ""].filter(Boolean).join(" | ");
+}
+
+function isMaleProfile(profile = {}) {
+  return /male|groom|ছেলে|বর/i.test(String(profile.gender || profile.profileFor || ""));
+}
+
+function isFemaleProfile(profile = {}) {
+  return /female|bride|মেয়ে|মেয়ে|কনে/i.test(String(profile.gender || profile.profileFor || ""));
+}
 function renderPaymentTable() {
   const payments = cleanPayments(state.payments || []);
   $("#tableHead").innerHTML = `<tr><th>Payment ID</th><th>Client</th><th>Type</th><th>Amount</th><th>Balance</th><th>Date</th><th>Mode</th><th>Purpose</th><th>Received By</th><th>Receipt</th></tr>`;
@@ -1215,6 +1355,13 @@ function cleanAgents(list) {
   );
 }
 
+function cleanMeetings(list) {
+  return (Array.isArray(list) ? list : []).filter((meeting) =>
+    String(meeting?.meetingId || "").trim() ||
+    String(meeting?.maleProfileId || "").trim() ||
+    String(meeting?.femaleProfileId || "").trim()
+  );
+}
 function cleanPayments(list) {
   return (Array.isArray(list) ? list : []).filter((payment) =>
     String(payment?.paymentId || "").trim() ||
@@ -1971,6 +2118,9 @@ function openDetails(profile) {
   if (detailActions) {
     addAction(detailActions, "Edit", "btn-gold", () => openProfileForm(profile));
     addAction(detailActions, "Payment", "btn-green", () => openPaymentModal(profile));
+    if (state.session.role === "admin") {
+      addAction(detailActions, "Schedule Meeting", "btn-blue", () => openMeetingModal({}, profile));
+    }
     addAction(detailActions, "Requirement", "btn-blue", () => openProfileNoteModal(profile, "requirement"));
     addAction(detailActions, "Verify Note", "btn-gold", () => openProfileNoteModal(profile, "verification"));
     if (state.session.role === "admin") {
@@ -3026,10 +3176,15 @@ function normalizeMessage(message) {
     "Story deleted": ["Story ডিলিট হয়েছে", "Success story list থেকে সরানো হয়েছে।"],
     "Note saved": ["নোট সেভ হয়েছে", "Client requirement / verification remark সফলভাবে সেভ হয়েছে।"],
     "Marriage completed": ["ম্যারেজ সম্পন্ন হিসেবে সেভ হয়েছে", "Client data delete না করে admin marriage record-এ রাখা হয়েছে।"],
-    "Added to shortlist": ["Shortlist-এ যোগ হয়েছে", "এই profile shortlist-এ রাখা হয়েছে।"]
+    "Added to shortlist": ["Shortlist-এ যোগ হয়েছে", "এই profile shortlist-এ রাখা হয়েছে।"],
+    "Meeting deleted": ["Meeting ডিলিট হয়েছে", "Meeting schedule থেকে record সরানো হয়েছে।"]
   };
   if (successMap[raw]) {
     return { type: "success", title: successMap[raw][0], text: successMap[raw][1] };
+  }
+  if (raw.startsWith("Meeting saved:")) {
+    const id = raw.replace("Meeting saved:", "").trim();
+    return { type: "success", title: "Meeting সেভ হয়েছে", text: "Meeting schedule সফলভাবে সেভ করা হয়েছে।", detail: id ? `Meeting ID: ${id}` : "" };
   }
   if (raw.startsWith("Payment saved:")) {
     const id = raw.replace("Payment saved:", "").trim();
@@ -3335,3 +3490,7 @@ if ("serviceWorker" in navigator) {
       .catch(err => console.log(err));
   });
 }
+
+
+
+

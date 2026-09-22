@@ -10,6 +10,7 @@ const PAYMENT_SHEET = 'Payments';
 const AGENT_PAYOUT_SHEET = 'AgentPayouts';
 const STORY_SHEET = 'Stories';
 const COMMON_EXPENSE_SHEET = 'CommonExpenses';
+const MEETING_SHEET = 'Meetings';
 
 const PROFILE_HEADERS = [
   'id', 'timestamp', 'status', 'agentId', 'fullName', 'profileFor', 'gender', 'dob', 'age',
@@ -56,13 +57,20 @@ const COMMON_EXPENSE_HEADERS = [
   'description', 'amount', 'mode', 'paidTo', 'personName', 'loanDirection',
   'loanStatus', 'returnDate', 'note', 'recordedByRole', 'recordedByName'
 ];
+const MEETING_HEADERS = [
+  'meetingId', 'timestamp', 'status',
+  'maleProfileId', 'maleName', 'femaleProfileId', 'femaleName',
+  'meetingDate', 'meetingTime', 'duration', 'meetingType',
+  'maleFamilyOpinion', 'femaleFamilyOpinion', 'nextActionDate', 'adminRemarks',
+  'createdByRole', 'createdByName', 'updatedAt', 'updatedBy'
+];
 
 function doGet(e) {
   try {
     const view = (e && e.parameter && e.parameter.view) || 'public';
     setupSheets_();
     if (view === 'setup') {
-      return json_({ ok: true, message: 'Sheets are ready', tabs: [PROFILE_SHEET, AGENT_SHEET, SESSION_SHEET, PAYMENT_SHEET, AGENT_PAYOUT_SHEET, STORY_SHEET, COMMON_EXPENSE_SHEET] });
+      return json_({ ok: true, message: 'Sheets are ready', tabs: [PROFILE_SHEET, AGENT_SHEET, SESSION_SHEET, PAYMENT_SHEET, AGENT_PAYOUT_SHEET, STORY_SHEET, COMMON_EXPENSE_SHEET, MEETING_SHEET] });
     }
 
     const profiles = readSheet_(PROFILE_SHEET, PROFILE_HEADERS);
@@ -118,6 +126,8 @@ function doPost(e) {
     if (action === 'saveStory') return saveStory_(data);
     if (action === 'deleteStory') return deleteStory_(data);
     if (action === 'saveCommonExpense') return saveCommonExpense_(data);
+    if (action === 'saveMeeting') return saveMeeting_(data);
+    if (action === 'deleteMeeting') return deleteMeeting_(data);
 
     return json_({ ok: false, error: 'Unknown action: ' + action });
   } catch (err) {
@@ -167,6 +177,7 @@ function dashboard_(data) {
   let agentPayouts = readSheet_(AGENT_PAYOUT_SHEET, AGENT_PAYOUT_HEADERS);
   const stories = readSheet_(STORY_SHEET, STORY_HEADERS);
   let commonExpenses = session.role === 'admin' ? readSheet_(COMMON_EXPENSE_SHEET, COMMON_EXPENSE_HEADERS) : [];
+  let meetings = session.role === 'admin' ? readSheet_(MEETING_SHEET, MEETING_HEADERS) : [];
   const agents = readSheet_(AGENT_SHEET, AGENT_HEADERS).map(item => safeAgent_(item, session.role === 'admin'));
 
   if (session.role === 'agent') {
@@ -188,11 +199,101 @@ function dashboard_(data) {
     agentPayouts: agentPayouts,
     currentAgent: currentAgent,
     stories: session.role === 'admin' ? stories : [],
-    commonExpenses: commonExpenses
+    commonExpenses: commonExpenses,
+    meetings: meetings
   });
 }
 
 
+function saveMeeting_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can manage meetings');
+
+  const maleProfileId = String(data.maleProfileId || '').trim();
+  const femaleProfileId = String(data.femaleProfileId || '').trim();
+  const meetingDate = String(data.meetingDate || '').trim();
+  const meetingTime = String(data.meetingTime || '').trim();
+  if (!maleProfileId || !femaleProfileId) throw new Error('Male and female profiles are required');
+  if (maleProfileId === femaleProfileId) throw new Error('Male and female profiles must be different');
+  if (!meetingDate || !meetingTime) throw new Error('Meeting date and time are required');
+
+  const profileSheet = getSheet_(PROFILE_SHEET, PROFILE_HEADERS);
+  const maleProfile = findById_(profileSheet, maleProfileId).item;
+  const femaleProfile = findById_(profileSheet, femaleProfileId).item;
+  const sheet = getSheet_(MEETING_SHEET, MEETING_HEADERS);
+  const existing = data.meetingId ? tryFindMeetingById_(sheet, data.meetingId) : null;
+  const meetingId = existing ? existing.item.meetingId : (data.meetingId || ('MTG' + Date.now().toString().slice(-9)));
+
+  assertMeetingSlotAvailable_(meetingId, maleProfileId, femaleProfileId, meetingDate, meetingTime);
+
+  const meeting = {};
+  MEETING_HEADERS.forEach(header => meeting[header] = data[header] || '');
+  meeting.meetingId = meetingId;
+  meeting.timestamp = existing ? (existing.item.timestamp || new Date()) : new Date();
+  meeting.status = data.status || (existing ? existing.item.status : 'Scheduled');
+  meeting.maleProfileId = maleProfile.id;
+  meeting.maleName = maleProfile.fullName || data.maleName || '';
+  meeting.femaleProfileId = femaleProfile.id;
+  meeting.femaleName = femaleProfile.fullName || data.femaleName || '';
+  meeting.meetingDate = meetingDate;
+  meeting.meetingTime = meetingTime;
+  meeting.duration = data.duration || '45';
+  meeting.meetingType = data.meetingType || 'Family Meeting';
+  meeting.maleFamilyOpinion = data.maleFamilyOpinion || '';
+  meeting.femaleFamilyOpinion = data.femaleFamilyOpinion || '';
+  meeting.nextActionDate = data.nextActionDate || '';
+  meeting.adminRemarks = data.adminRemarks || '';
+  meeting.createdByRole = existing ? (existing.item.createdByRole || session.role) : session.role;
+  meeting.createdByName = existing ? (existing.item.createdByName || session.name || 'Admin') : (session.name || 'Admin');
+  meeting.updatedAt = new Date();
+  meeting.updatedBy = session.name || 'Admin';
+
+  if (existing) {
+    updateRow_(sheet, existing.row, MEETING_HEADERS, meeting);
+  } else {
+    appendObject_(sheet, MEETING_HEADERS, meeting);
+  }
+  return json_({ ok: true, meeting: meeting });
+}
+
+function deleteMeeting_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can delete meetings');
+  const sheet = getSheet_(MEETING_SHEET, MEETING_HEADERS);
+  const found = tryFindMeetingById_(sheet, data.meetingId);
+  if (!found) throw new Error('Meeting not found');
+  sheet.deleteRow(found.row);
+  return json_({ ok: true });
+}
+
+function assertMeetingSlotAvailable_(meetingId, maleProfileId, femaleProfileId, meetingDate, meetingTime) {
+  const meetings = readSheet_(MEETING_SHEET, MEETING_HEADERS);
+  const ignoredStatuses = ['cancelled', 'no show'];
+  const conflict = meetings.find(item => {
+    if (String(item.meetingId || '') === String(meetingId || '')) return false;
+    if (ignoredStatuses.includes(String(item.status || '').trim().toLowerCase())) return false;
+    if (String(item.meetingDate || '') !== String(meetingDate || '')) return false;
+    if (String(item.meetingTime || '') !== String(meetingTime || '')) return false;
+    const profileIds = [String(item.maleProfileId || ''), String(item.femaleProfileId || '')];
+    return profileIds.includes(String(maleProfileId || '')) || profileIds.includes(String(femaleProfileId || ''));
+  });
+  if (conflict) throw new Error('This profile already has a meeting scheduled at this time.');
+}
+
+function tryFindMeetingById_(sheet, meetingId) {
+  if (!meetingId) return null;
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return null;
+  const headers = values[0].map(String);
+  const idColumn = headers.indexOf('meetingId');
+  if (idColumn === -1) return null;
+  for (let index = 1; index < values.length; index++) {
+    if (String(values[index][idColumn]) === String(meetingId)) {
+      return { row: index + 1, item: rowToObject_(headers, values[index]) };
+    }
+  }
+  return null;
+}
 function saveCommonExpense_(data) {
   const session = requireSession_(data.token);
   if (session.role !== 'admin') throw new Error('Only admin can record expense book entries');
@@ -748,11 +849,12 @@ function setupSheets_() {
   getSheet_(AGENT_PAYOUT_SHEET, AGENT_PAYOUT_HEADERS);
   getSheet_(STORY_SHEET, STORY_HEADERS);
   getSheet_(COMMON_EXPENSE_SHEET, COMMON_EXPENSE_HEADERS);
+  getSheet_(MEETING_SHEET, MEETING_HEADERS);
 }
 
 function setupSheets() {
   setupSheets_();
-  return 'Profiles, Agents, Sessions, Payments, AgentPayouts, Stories, CommonExpenses tabs are ready.';
+  return 'Profiles, Agents, Sessions, Payments, AgentPayouts, Stories, CommonExpenses, Meetings tabs are ready.';
 }
 
 function readSheet_(name, headers) {
@@ -796,6 +898,9 @@ function isMeaningfulRow_(sheetName, item) {
   }
   if (sheetName === STORY_SHEET) {
     return Boolean(String(item.id || '').trim() || String(item.coupleName || '').trim() || String(item.story || '').trim());
+  }
+  if (sheetName === MEETING_SHEET) {
+    return Boolean(String(item.meetingId || '').trim() || String(item.maleProfileId || '').trim() || String(item.femaleProfileId || '').trim());
   }
   return Object.keys(item).some(key => String(item[key] || '').trim() !== '');
 }
@@ -1101,6 +1206,10 @@ function json_(payload) {
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+
+
+
 
 
 
