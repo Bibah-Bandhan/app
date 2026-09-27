@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwRKZKJof-5OlCZn6LT_oMdLUvy-gSq8LNjHTaaK2VKkah4vwV-Zesp2K1Q_3AbLE9F4A/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyN4ySgfdG_auidLlB3rJWD0erIBoHkCNjbqra7M8Jvff9Df5z5WRlpjzAOybjjdIw5SQ/exec";
 
 const state = {
   profiles: [],
@@ -66,6 +66,7 @@ let activeReceiptTitle = "";
 let activeNoteContext = null;
 let activeMarriageProfile = null;
 let activeAgreementUploadProfile = null;
+let activeAgentAgreementUpload = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   bindUi();
@@ -150,6 +151,7 @@ function bindUi() {
   if ($("#marriageForm")) $("#marriageForm").addEventListener("submit", submitMarriageComplete);
   if ($("#serviceAgreementForm")) $("#serviceAgreementForm").addEventListener("submit", submitServiceAgreement);
   if ($("#agreementUploadForm")) $("#agreementUploadForm").addEventListener("submit", submitAgreementScanUpload);
+  if ($("#agentAgreementUploadForm")) $("#agentAgreementUploadForm").addEventListener("submit", submitAgentAgreementScanUpload);
   if ($("#otherDocumentUploadForm")) $("#otherDocumentUploadForm").addEventListener("submit", submitOtherDocumentUpload);
   if ($("#selfDeclarationForm")) $("#selfDeclarationForm").addEventListener("submit", submitSelfDeclaration);
   if ($("#clearSelfDeclarationForm")) $("#clearSelfDeclarationForm").addEventListener("click", clearSelfDeclarationForm);
@@ -1032,7 +1034,7 @@ function openAgentDetail(agent) {
     ["Account Holder", agent.accountHolderName], ["Bank Summary", formatAgentBank(agent)], ["UPI ID", agent.upiId],
     ["Working Area", agent.area], ["Level", agent.level], ["Status", agent.status],
     ["Reg. Commission", `${agent.regCommission || 30}%`], ["Marriage Commission", `${agent.marriageCommission || 25}%`],
-    ["Photo", agent.photo], ["Aadhaar Document", agent.aadhaarDoc], ["Bank Document", agent.bankDoc],
+    ["Photo", agent.photo], ["Aadhaar Document", agent.aadhaarDoc], ["Bank Document", agent.bankDoc], ["Agreement Scan", agent.agreementScanUrl],
     ["Password", agent.password || "Set new password"], ["Total Payout", `₹${totalPayout}`]
   ];
   $("#agentDetailBody").innerHTML = `
@@ -1050,9 +1052,11 @@ function openAgentDetail(agent) {
   actions.innerHTML = "";
   addAction(actions, "Edit", "btn-gold", () => { closeModals(); fillAgentForm(agent); });
   addAction(actions, "ID Card", "btn-blue", () => openAgentIdCard(agent));
+  addAction(actions, "Print Agreement", "btn-blue", () => openAgentAgreementPrint(agent));
   addAction(actions, "Reset Password", "btn-green", () => resetAgentPassword(agent));
   if (state.session.role === "admin") {
     addAction(actions, "Add Payout", "btn-green", () => { closeModals(); openAgentPayoutForm(agent); });
+    addAction(actions, "Upload Agreement Scan", "btn-green", () => uploadAgentAgreementScan(agent));
     if (agent.status === "pending") addAction(actions, "Approve", "btn-green", () => approveAgent(agent));
   }
   openModal("agentDetailModal");
@@ -1074,27 +1078,48 @@ function openAgentPayoutForm(agent) {
 function openAgentIdCard(agent) {
   if (!agent?.id) return toast("Agent profile not found");
   const photo = photoUrl(agent.photo);
+  const issuedOn = formatDate(agent.timestamp) || new Date().toISOString().slice(0, 10);
+  const verificationText = [
+    "Bibah Bandhan Agent Verification",
+    `Agent ID: ${agent.id || ""}`,
+    `Name: ${agent.name || ""}`,
+    `Status: ${agent.status || "active"}`,
+    `Level: ${agent.level || "Standard"}`,
+    "Office Phone: 9475272791"
+  ].join("\n");
+  const qrUrl = `https://quickchart.io/qr?size=130&margin=1&text=${encodeURIComponent(verificationText)}`;
   $("#agentIdCardBody").innerHTML = `
     <div class="agent-id-card" id="agentIdPrintArea">
-      <div class="id-header">
-        <div class="id-brand">BB</div>
-        <div><h4>বিবাহ বন্ধন </h4><small>Authorized Field Agent</small></div>
+      <div class="id-side id-front">
+        <div class="id-header">
+          <img src="bfi.png" alt="বিবাহ বন্ধন">
+          <div><h4>বিবাহ বন্ধন</h4><small>MARRIAGE BUREAU OFFICE</small></div>
+        </div>
+        <div class="id-main">
+          ${photo ? `<img class="id-photo" src="${escapeAttr(photo)}" alt="">` : `<div class="id-photo avatar">${initials(agent.name)}</div>`}
+          <div class="id-info">
+            <span class="id-role">AUTHORIZED AGENT</span>
+            <h4>${escapeHtml(agent.name || "")}</h4>
+            <p class="id-number">Agent ID: ${escapeHtml(agent.id || "")}</p>
+            <div class="id-meta">
+              <p><span>Level</span><strong>${escapeHtml(agent.level || "Standard")}</strong></p>
+              <p><span>Area</span><strong>${escapeHtml(agent.area || "")}</strong></p>
+              <p><span>Mobile</span><strong>${escapeHtml(agent.phone || "")}</strong></p>
+              <p><span>Issued</span><strong>${escapeHtml(issuedOn)}</strong></p>
+            </div>
+          </div>
+        </div>
+        <div class="id-valid">VALID AUTHORIZED AGENT</div>
       </div>
-      <div class="id-body">
-        ${photo ? `<img class="id-photo" src="${escapeAttr(photo)}" alt="">` : `<div class="id-photo avatar">${initials(agent.name)}</div>`}
-        <h4>${escapeHtml(agent.name || "")}</h4>
-        <p class="id-number">${escapeHtml(agent.id || "")}</p>
-        <div class="id-meta">
-          <p><span>Level</span><strong>${escapeHtml(agent.level || "Standard")}</strong></p>
-          <p><span>Phone</span><strong>${escapeHtml(agent.phone || "")}</strong></p>
-          <p><span>Area</span><strong>${escapeHtml(agent.area || "")}</strong></p>
-          <p><span>Reg. Comm.</span><strong>${escapeHtml(agent.regCommission || 30)}%</strong></p>
-          <p><span>Marriage Comm.</span><strong>${escapeHtml(agent.marriageCommission || 25)}%</strong></p>
-        </div>
-        <div class="id-sign-row">
-          <span>Agent Signature</span>
-          <span>Office Seal</span>
-        </div>
+      <div class="id-side id-back">
+        <strong>AGENT VERIFICATION</strong>
+        <p>এই কার্ডটি বিবাহ বন্ধনের অনুমোদিত Agent পরিচয়ের জন্য।</p>
+        <p><b>Agent ID:</b> ${escapeHtml(agent.id || "")}</p>
+        <p><b>Office:</b> তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭</p>
+        <p><b>WhatsApp:</b> 9475272791</p>
+        <p><b>Website:</b> bibah-bandhan.com</p>
+        <img class="id-qr" src="${escapeAttr(qrUrl)}" alt="Agent verification QR">
+        <div class="id-sign-row"><span>Office Seal</span><span>Authorized Sign</span></div>
       </div>
     </div>`;
   openModal("agentIdCardModal");
@@ -1103,6 +1128,257 @@ function openAgentIdCard(agent) {
 function printAgentIdCard() {
   setActivePrintMode("agent-id-card");
   window.print();
+}
+
+function uploadAgentAgreementScan(agent) {
+  if (!state.session || state.session.role !== "admin") return toast("Only admin can upload agent agreement scan");
+  activeAgentAgreementUpload = agent;
+  const form = $("#agentAgreementUploadForm");
+  if (!form) return;
+  form.reset();
+  if ($("#agentAgreementUploadAgent")) $("#agentAgreementUploadAgent").textContent = `${agent.name || "Agent"}${agent.id ? ` (${agent.id})` : ""}`;
+  closeModals();
+  openModal("agentAgreementUploadModal");
+}
+
+async function submitAgentAgreementScanUpload(event) {
+  event.preventDefault();
+  const form = event.target;
+  const file = form.agentAgreementScanFile?.files?.[0];
+  const agent = activeAgentAgreementUpload;
+  if (!file || !agent?.id) return;
+  try {
+    const dataUrl = await fileToDataUrl(file);
+    const result = await api("uploadAgentAgreementScan", {
+      token: state.session.token,
+      id: agent.id,
+      fileName: file.name || "agent-agreement-scan",
+      file: dataUrl,
+    });
+    if (!result.ok) throw new Error(result.error || "Agent agreement upload failed");
+    const updatedAgent = result.agent || { ...agent, agreementScanUrl: result.url };
+    const index = state.agents.findIndex((item) => String(item.id || "") === String(updatedAgent.id || ""));
+    if (index !== -1) state.agents[index] = { ...state.agents[index], ...updatedAgent };
+    if (state.currentAgent && String(state.currentAgent.id || "") === String(updatedAgent.id || "")) {
+      state.currentAgent = { ...state.currentAgent, ...updatedAgent };
+    }
+    activeAgentAgreementUpload = null;
+    await loadDashboardData();
+    closeModals();
+    toast("Agent agreement scan uploaded");
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+function openAgentAgreementPrint(agent) {
+  if (!agent?.id) return toast("Agent profile not found");
+
+  const agreementId = `AAGR-${new Date().getFullYear()}-${String(agent.id).replace(/[^a-zA-Z0-9]/g, "")}`;
+  const photo = photoUrl(agent.photo);
+  const fullAddress = formatAgentAddress(agent) || agent.address || "";
+  const appointmentDate = formatDate(agent.timestamp || agent.appointmentDate) || new Date().toLocaleDateString("en-IN");
+  const regCommission = agent.regCommission || 30;
+  const marriageCommission = agent.marriageCommission || 25;
+  const display = (v) => escapeHtml(v || "N/A");
+
+  activeReceiptTitle = `${sanitizeFileName(agent.name || agent.id)} agent agreement`;
+  if ($("#receiptModalTitle")) $("#receiptModalTitle").textContent = "Agent Agreement";
+  if ($("#printReceiptBtn")) $("#printReceiptBtn").textContent = "Print / Save Agent Agreement PDF";
+  if ($("#receiptSize")) $("#receiptSize").value = "a4";
+  setActivePrintMode("agreement");
+
+  $("#receiptBody").innerHTML = `
+    <div class="receipt-paper receipt-a4 agreement-paper agent-agreement-paper" id="receiptPrintArea">
+
+      <!-- ========================= PAGE 1 ========================= -->
+      <div class="agent-page agent-page-1">
+        <div class="agreement-header agent-agreement-header">
+        <div class="agreement-logo-wrap">
+          <img src="bfi.png" class="agreement-main-logo" alt="বিবাহ বন্ধন">
+        </div>
+        <div class="agreement-header-text agent-header-main">
+          <h1>বিবাহ বন্ধন</h1>
+          <p>Marriage Bureau Office</p>
+          <small>বিশ্বাসের সাথে উপযুক্ত পাত্র-পাত্রীর সন্ধান কেন্দ্র</small>
+          <small>Registration No.: 1852</small>
+          <small>অফিস: তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭</small>
+          <small>মোবাইল / WhatsApp: 9475272791</small>
+        </div>
+        <div class="agreement-id-box agent-header-id">
+          <span>AGENT ID</span><strong>${display(agent.id)}</strong>
+          <span>AGREEMENT ID</span><strong>${display(agreementId)}</strong>
+        </div>
+      </div>
+
+      <div class="agreement-title-box">
+        <h2>AGENT PROFILE & OFFICIAL SUPPORT KIT</h2>
+        <p>এজেন্টের পরিচয়, নিয়োগের তথ্য ও বিবাহ বন্ধনের পক্ষ থেকে প্রদত্ত সুবিধাসমূহ</p>
+      </div>
+
+
+        <div class="agent-profile-panel">
+        <div class="agent-profile-photo">
+          ${photo ? `<img src="${escapeAttr(photo)}" alt="Agent Photo">` : `<div class="photo-placeholder">AGENT<br>PHOTO</div>`}
+        </div>
+        <div class="agent-profile-fields">
+          <div class="agent-profile-field"><span>Agent Name / এজেন্টের নাম</span><strong>${display(agent.name)}</strong></div>
+          <div class="agent-profile-field"><span>Agent ID</span><strong>${display(agent.id)}</strong></div>
+          <div class="agent-profile-field"><span>Gender / লিঙ্গ</span><strong>${display(agent.gender)}</strong></div>
+          <div class="agent-profile-field"><span>Date of Birth / জন্ম তারিখ</span><strong>${display(formatDate(agent.dob))}</strong></div>
+          <div class="agent-profile-field"><span>Mobile / মোবাইল</span><strong>${display(agent.phone)}</strong></div>
+          
+          <div class="agent-profile-field"><span>Email / ই-মেইল</span><strong>${display(agent.email)}</strong></div>
+          <div class="agent-profile-field"><span>Working Area / কর্মক্ষেত্র</span><strong>${display(agent.area)}</strong></div>
+          <div class="agent-profile-field"><span>Agent Level / স্তর</span><strong>${display(agent.level || "Standard")}</strong></div>
+          <div class="agent-profile-field"><span>Status / স্ট্যাটাস</span><strong>${display(agent.status || "Active")}</strong></div>
+          <div class="agent-profile-field"><span>Appointment Date / নিয়োগের তারিখ</span><strong>${display(appointmentDate)}</strong></div>
+          <div class="agent-profile-field"><span>Aadhaar No. / আধার নম্বর</span><strong>${display(agent.aadhaar)}</strong></div>
+          <div class="agent-profile-field"><span>PIN Code / পিন</span><strong>${display(agent.pinCode)}</strong></div>
+          <div class="agent-profile-field full"><span>Full Residential Address / সম্পূর্ণ ঠিকানা</span><strong>${display(fullAddress)}</strong></div>
+        </div>
+      </div>
+
+
+
+        <div class="agreement-section agent-support-section">
+        <h3>Agent Support, Official Kit & Performance Recognition</h3>
+        <div class="agent-support-grid">
+          <div class="agent-support-card"><strong>১. Printed Official ID Card</strong><span>অনুমোদিত এজেন্টকে বিবাহ বন্ধনের পক্ষ থেকে একটি Printed Official Agent ID Card প্রদান করা হবে। এজেন্টশিপ শেষ বা বাতিল হলে প্রয়োজনে ID Card অফিসে ফেরত দিতে হবে।</span></div>
+          <div class="agent-support-card"><strong>২. Agent Notebook & Pen</strong><span>কাজের সুবিধার জন্য একটি Agent Notebook ও Pen প্রদান করা হবে। সম্ভাব্য পাত্র-পাত্রীর প্রাথমিক তথ্য ও কাজের প্রয়োজনীয় নোট রাখার জন্য এগুলো ব্যবহার করা যাবে।</span></div>
+          <div class="agent-support-card"><strong>৩. Branded T-Shirt & Bag</strong><span>ভালো ও নিয়মিত কাজের ভিত্তিতে পরবর্তীতে বিবাহ বন্ধনের Branded T-Shirt, Bag বা অন্যান্য promotional materials প্রদান করা হতে পারে। এগুলো কোনো নিশ্চিত পারিশ্রমিক বা কমিশনের অংশ নয়।</span></div>
+          <div class="agent-support-card"><strong>৪. Gift, Award & Recognition</strong><span>ভালো performance, target achievement, নিয়মিততা ও প্রতিষ্ঠানের কাজে উল্লেখযোগ্য অবদানের জন্য সময়ে সময়ে Gift, Award, Certificate বা অন্যান্য স্বীকৃতি দেওয়া হতে পারে।</span></div>
+        </div>
+        <p class="support-note"><strong>শর্ত:</strong> ID Card, Notebook, Pen, T-Shirt, Bag, Gift বা অন্যান্য সুবিধা অফিসের policy, availability ও performance-এর ভিত্তিতে প্রদান করা হবে। কোনো অতিরিক্ত সুবিধা স্বয়ংক্রিয় বা স্থায়ী পাওনা হিসেবে গণ্য হবে না।</p>
+      </div>
+      </div>
+
+      <div class="agreement-page-break"></div>
+
+      <!-- ========================= PAGE 2 ========================= -->
+      <div class="agent-page agent-page-2">
+
+        <div class="agreement-header agent-agreement-header">
+        <div class="agreement-logo-wrap"><img src="bfi.png" class="agreement-main-logo" alt="বিবাহ বন্ধন"></div>
+        <div class="agreement-header-text agent-header-main">
+          <h1>বিবাহ বন্ধন</h1>
+          <p>Marriage Bureau Office</p>
+          <small>Terms & Conditions + Commission Structure</small>
+          <small>Registration No.: 1852 | Mobile / WhatsApp: 9475272791</small>
+        </div>
+        <div class="agreement-id-box agent-header-id"><span>AGENT ID</span><strong>${display(agent.id)}</strong><span>AGREEMENT ID</span><strong>${display(agreementId)}</strong></div>
+      </div>
+
+      <div class="agreement-title-box compact-title">
+        <h2>TERMS & CONDITIONS + COMMISSION</h2>
+        <p>এজেন্টের দায়িত্ব, গোপনীয়তা, কমিশন, পারফরম্যান্স ও অফিস নীতিমালা</p>
+      </div>
+
+        <div class="agreement-section agent-terms-section">
+        <h3>শর্ত ও নিয়মাবলী — Terms & Conditions</h3>
+        <ol class="agreement-terms">
+          <li><strong>নিয়োগ ও পরিচয়:</strong> Agent-কে বিবাহ বন্ধনের অনুমোদিত Field Agent / Representative হিসেবে নির্দিষ্ট Agent ID-তে কাজ করতে হবে। Agent ID ব্যক্তিগত এবং অন্য কাউকে ব্যবহার করতে দেওয়া যাবে না।</li>
+          <li><strong>কাজের দায়িত্ব:</strong> Agent নিজ এলাকার সম্ভাব্য পাত্র-পাত্রীর তথ্য সংগ্রহ, প্রাথমিক যোগাযোগ, profile submission এবং প্রয়োজনীয় ক্ষেত্রে client ও office-এর মধ্যে যোগাযোগে সহায়তা করবেন।</li>
+          <li><strong>সঠিক তথ্য:</strong> জমা দেওয়া নাম, বয়স, ঠিকানা, মোবাইল, বৈবাহিক অবস্থা, ছবি ও অন্যান্য তথ্য যথাসম্ভব সঠিক ও যাচাইযোগ্য হতে হবে। ইচ্ছাকৃত ভুল, জাল বা বিভ্রান্তিকর তথ্য গ্রহণযোগ্য নয়।</li>
+          <li><strong>Client Confidentiality:</strong> Client-এর মোবাইল, ঠিকানা, ছবি, পারিবারিক তথ্য, পরিচয়পত্র বা ব্যক্তিগত তথ্য অনুমতি ছাড়া প্রকাশ, বিক্রি, forward বা social media-তে প্রচার করা যাবে না।</li>
+          <li><strong>অর্থ গ্রহণ:</strong> Client-এর কাছ থেকে কোনো টাকা নেওয়ার ক্ষেত্রে অফিসের অনুমোদিত পদ্ধতি, রসিদ ও হিসাব অনুসরণ করতে হবে। ব্যক্তিগতভাবে অতিরিক্ত টাকা নেওয়া বা অফিসের নামে অননুমোদিত collection করা যাবে না।</li>
+          <li><strong>অননুমোদিত প্রতিশ্রুতি নিষেধ:</strong> Agent নিজের ক্ষমতায় marriage guarantee, refund, discount, বিশেষ সুবিধা, নির্দিষ্ট ফলাফল বা অন্য কোনো আর্থিক/আইনি প্রতিশ্রুতি দিতে পারবেন না।</li>
+          <li><strong>Commission:</strong> Registration ও Marriage Commission অফিসের বর্তমান policy, eligible transaction এবং office record অনুযায়ী প্রযোজ্য হবে। একই profile নিয়ে duplicate claim হলে office record-এর submission/verification তথ্য বিবেচিত হবে।</li>
+          <li><strong>Performance-based Commission Increase:</strong> কোনো Agent-এর কাজের মান, নিয়মিততা, valid profile contribution, client service এবং overall performance ভালো হলে অফিস কর্তৃপক্ষ পর্যালোচনা করে তার commission percentage বৃদ্ধি করতে পারে। এটি performance-based benefit; স্বয়ংক্রিয় বা স্থায়ী অধিকার হিসেবে গণ্য হবে না।</li>
+          <li><strong>Monthly Competition & Gift:</strong> অফিস সময়ে সময়ে Agent-দের জন্য performance competition, monthly target বা special campaign ঘোষণা করতে পারে। নির্ধারিত সময়ে ভালো ফলাফলকারী Agent-কে অফিসের সিদ্ধান্ত অনুযায়ী gift / reward দেওয়া হতে পারে।</li>
+          <li><strong>Target / Quota Reward:</strong> কোনো মাসে অফিস নির্দিষ্ট quota বা target ঘোষণা করলে, যেমন ১০টি eligible profile/registration-এর target, তা সফলভাবে পূরণকারী Agent-এর জন্য অতিরিক্ত incentive বা বিশেষ gift দেওয়ার ব্যবস্থা থাকতে পারে। Target, eligibility ও reward-এর ধরন প্রতিটি campaign-এ আলাদাভাবে জানানো হবে।</li>
+          <li><strong>Profile Ownership:</strong> কোনো profile আগে অন্য Agent জমা দিয়েছেন কি না, submission date, client confirmation এবং office record অনুযায়ী ownership/commission eligibility নির্ধারিত হবে। এ নিয়ে বিরোধ হলে চূড়ান্ত administrative decision অফিসের record-এর ভিত্তিতে হবে।</li>
+          <li><strong>Brand & ID Card:</strong> বিবাহ বন্ধনের logo, নাম, ID card, visiting material ও digital resources শুধুমাত্র অনুমোদিত কাজের জন্য ব্যবহার করা যাবে। Agent নিজেকে Owner, Director, Partner বা Legal Representative হিসেবে উপস্থাপন করতে পারবেন না, যদি না লিখিতভাবে এমন ক্ষমতা দেওয়া থাকে।</li>
+          <li><strong>Client Verification:</strong> Agent-এর সংগৃহীত তথ্য প্রাথমিক তথ্য হিসেবে বিবেচিত হবে। Client/Guardian এবং বিবাহ বন্ধনের নির্ধারিত verification process ছাড়া কোনো তথ্যকে final verified বা guaranteed বলা যাবে না।</li>
+          <li><strong>বিবাহের নিশ্চয়তা নয়:</strong> Profile registration, meeting arrangement বা কোনো service নেওয়া মানেই বিবাহ নিশ্চিত হওয়া নয়। Final decision সবসময় সংশ্লিষ্ট ব্যক্তি ও পরিবারের নিজস্ব সিদ্ধান্তের উপর নির্ভর করবে।</li>
+          <li><strong>শৃঙ্খলা, স্থগিত ও বাতিল:</strong> Data misuse, fraud, financial irregularity, client complaint, unauthorized representation, repeated rule violation বা office interest-এর বিরুদ্ধে গুরুতর আচরণ হলে Agent status warning, suspension বা termination করা যেতে পারে।</li>
+          <li><strong>Agreement & Record:</strong> এই Agreement-এর signed copy/scan office record-এ সংরক্ষিত থাকবে। Agent-এর কাজ ও সুবিধা এই Agreement, office policy এবং সময়ে সময়ে প্রকাশিত written instructions অনুযায়ী পরিচালিত হবে।</li>
+        </ol>
+      </div>
+
+        <div class="agreement-section commission-policy-box">
+        <h3>Commission Structure & Performance Incentive</h3>
+        <table class="service-charge-table agent-commission-table">
+          <thead><tr><th>ক্রম</th><th>বিষয়</th><th>বর্তমান হার</th><th>নিয়ম / মন্তব্য</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Registration Commission</td><td><strong>${display(regCommission)}%</strong></td><td>Eligible registration office record অনুযায়ী commission প্রযোজ্য হবে।</td></tr>
+            <tr><td>2</td><td>Marriage Commission</td><td><strong>${display(marriageCommission)}%</strong></td><td>Eligible marriage/service completion এবং office record অনুযায়ী commission প্রযোজ্য হবে।</td></tr>
+            <tr><td>3</td><td>Performance Increase</td><td>পর্যালোচনাধীন</td><td>ভালো ও ধারাবাহিক performance থাকলে অফিস কর্তৃপক্ষ commission percentage বাড়াতে পারে।</td></tr>
+            <tr><td>4</td><td>Monthly Competition</td><td>Campaign ভিত্তিক</td><td>সেরা ফলাফলকারী Agent-এর জন্য gift / reward ঘোষণা করা যেতে পারে।</td></tr>
+            <tr><td>5</td><td>Target / Quota Reward</td><td>Campaign ভিত্তিক</td><td>নির্ধারিত quota সফলভাবে পূরণ করলে অতিরিক্ত incentive বা gift দেওয়া যেতে পারে।</td></tr>
+          </tbody>
+        </table>
+        <p class="commission-note">নোট: Commission percentage, target, competition, gift বা incentive অফিসের business policy, campaign ও available scheme অনুযায়ী সময়ে সময়ে পরিবর্তন/ঘোষণা করা যেতে পারে। কোনো gift বা performance benefit পূর্বনির্ধারিত guaranteed entitlement নয়; campaign-এর eligibility পূরণ সাপেক্ষে প্রযোজ্য হবে।</p>
+      </div>
+      </div>
+
+      <div class="agreement-page-break"></div>
+
+      <!-- ========================= PAGE 3 ========================= -->
+      <div class="agent-page agent-page-3">
+
+        <div class="agreement-header agent-agreement-header">
+        <div class="agreement-logo-wrap"><img src="bfi.png" class="agreement-main-logo" alt="বিবাহ বন্ধন"></div>
+        <div class="agreement-header-text agent-header-main">
+          <h1>বিবাহ বন্ধন</h1>
+          <p>Marriage Bureau Office</p>
+          <small>Agent Declaration, Record & Signatures</small>
+          <small>Registration No.: 1852 | Mobile / WhatsApp: 9475272791</small>
+        </div>
+        <div class="agreement-id-box agent-header-id"><span>AGENT ID</span><strong>${display(agent.id)}</strong><span>AGREEMENT ID</span><strong>${display(agreementId)}</strong></div>
+      </div>
+
+      <div class="agreement-title-box centered">
+        <h2>AGENT DECLARATION & AGREEMENT RECORD</h2>
+        <p>এজেন্টের স্বীকৃতি, দায়বদ্ধতা, স্বাক্ষর ও অফিস রেকর্ড</p>
+      </div>
+
+      <div class="agreement-section agent-declaration-section">
+        <h3>Agent Declaration / এজেন্টের ঘোষণা</h3>
+        <div class="declaration-box agent-declaration-box">
+          <ol class="declaration-list">
+            <li>আমি <strong>${display(agent.name)}</strong> ঘোষণা করছি যে, এই Agent Agreement-এর শর্তাবলী আমি পড়েছি, বুঝেছি এবং স্বেচ্ছায় মেনে চলতে সম্মত।</li>
+            <li>আমি Client-এর তথ্য, ছবি, যোগাযোগের তথ্য ও বিবাহ বন্ধনের office resources যথাযথভাবে ব্যবহার করব এবং গোপনীয়তা রক্ষা করব।</li>
+            <li>আমি কোনো ভুল তথ্য, প্রতারণা, অননুমোদিত আর্থিক লেনদেন, false promise বা office-এর নামের অপব্যবহার করব না।</li>
+            <li>আমি জানি যে commission, performance increase, competition gift এবং target reward office policy ও campaign eligibility-এর উপর নির্ভরশীল।</li>
+            <li>আমি বুঝেছি যে Agent হিসেবে আমার কাজ কোনো client-এর বিবাহ নিশ্চিত করে না এবং final decision সংশ্লিষ্ট ব্যক্তি/পরিবারের নিজস্ব সিদ্ধান্ত।</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="agreement-section agent-agreement-record">
+        <h3>Agreement Record</h3>
+        <div class="agreement-record-box">
+          <div><span>Agent ID</span><strong>${display(agent.id)}</strong></div>
+          <div><span>Agent Name</span><strong>${display(agent.name)}</strong></div>
+          <div><span>Agreement ID</span><strong>${display(agreementId)}</strong></div>
+          <div><span>Agreement Date</span><strong>${display(appointmentDate)}</strong></div>
+          <div><span>Working Area</span><strong>${display(agent.area)}</strong></div>
+          <div><span>Level</span><strong>${display(agent.level || "Standard")}</strong></div>
+        </div>
+      </div>
+
+      <div class="signature-grid agent-signature-grid">
+        <div class="signature-box"><div class="signature-line"></div><strong>Agent Signature</strong><span>${display(agent.name)}</span></div>
+        <div class="signature-box"><div class="signature-line"></div><strong>Office Representative</strong><span>বিবাহ বন্ধন</span></div>
+        <div class="signature-box office-signature"><div class="seal-space">OFFICE<br>SEAL</div><strong>Office Seal</strong><span>${display(agreementId)}</span></div>
+      </div>
+
+      <div class="agreement-important-note agent-office-record">
+        <strong>Office Record:</strong> Signed original / scanned copy এই Agent-এর official record হিসেবে সংরক্ষণ করা হবে। Agent-এর commission, incentive এবং performance record office account/record অনুযায়ী পরিচালিত হবে।
+      </div>
+
+      <div class="agreement-footer">
+        <div><strong>বিবাহ বন্ধন</strong><span>Marriage Bureau & Matrimonial Service</span></div>
+        <div>তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭ | Mobile / WhatsApp: 9475272791</div>
+        <div>Agreement ID: <strong>${display(agreementId)}</strong></div>
+      </div>
+      </div>
+
+    </div>`;
+  setReceiptPrintSize("a4");
+  closeModals();
+  openModal("receiptModal");
 }
 
 async function approveAgent(agent) {
@@ -1281,8 +1557,8 @@ function openProfileNoteModal(profile, noteType) {
   $("#profileNoteClient").textContent = `${profile.fullName || "Client"} (${profile.id || ""})`;
   $("#profileNoteText").value = isRequirement ? (profile.specialRequirement || "") : (profile.verificationRemark || "");
   $("#profileNoteHelp").textContent = isRequirement
-    ? "Agent/Admin client-er special requirement ekhane likhte parbe."
-    : "Client data thik na bhul, field verified remark/review ekhane likhun.";
+    ? ""
+    : "";
   openModal("profileNoteModal");
 }
 
@@ -3490,7 +3766,3 @@ if ("serviceWorker" in navigator) {
       .catch(err => console.log(err));
   });
 }
-
-
-
-

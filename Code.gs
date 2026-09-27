@@ -33,7 +33,7 @@ const AGENT_HEADERS = [
   'phone', 'whatsapp', 'email', 'aadhaar',
   'bankName', 'ifscCode', 'accountNumber', 'accountHolderName', 'upiId',
   'area',
-  'photo', 'aadhaarDoc', 'bankDoc', 'regCommission', 'marriageCommission',
+  'photo', 'aadhaarDoc', 'bankDoc', 'agreementScanUrl', 'agreementScanUploadedAt', 'agreementScanUploadedBy', 'regCommission', 'marriageCommission',
   'password', 'passwordHash'
 ];
 
@@ -112,6 +112,7 @@ function doPost(e) {
     if (action === 'saveProfileNote') return saveProfileNote_(data);
     if (action === 'saveServiceAgreement') return saveServiceAgreement_(data);
     if (action === 'uploadAgreementScan') return uploadAgreementScan_(data);
+    if (action === 'uploadAgentAgreementScan') return uploadAgentAgreementScan_(data);
     if (action === 'uploadOtherDocument') return uploadOtherDocument_(data);
     if (action === 'completeMarriage') return completeMarriage_(data);
     if (action === 'deleteProfile') return deleteProfile_(data);
@@ -469,6 +470,24 @@ function uploadAgreementScan_(data) {
 
   updateRow_(sheet, found.row, PROFILE_HEADERS, updates);
   return json_({ ok: true, url: updates.agreementScanUrl, profile: updates });
+}
+
+function uploadAgentAgreementScan_(data) {
+  const session = requireSession_(data.token);
+  if (session.role !== 'admin') throw new Error('Only admin can upload agent agreement scans');
+
+  const sheet = getSheet_(AGENT_SHEET, AGENT_HEADERS);
+  const found = findById_(sheet, data.id);
+  const updates = Object.assign({}, found.item);
+  const fileData = data.file || data.agreementScan || '';
+  if (!String(fileData).startsWith('data:')) throw new Error('Agent agreement scan file is required');
+
+  updates.agreementScanUrl = saveAgentFile_(fileData, found.item.id, found.item.name, 'agent_agreement_scan');
+  updates.agreementScanUploadedAt = new Date();
+  updates.agreementScanUploadedBy = session.name || 'Admin';
+
+  updateRow_(sheet, found.row, AGENT_HEADERS, updates);
+  return json_({ ok: true, url: updates.agreementScanUrl, agent: safeAgent_(updates, true) });
 }
 
 function uploadOtherDocument_(data) {
@@ -1039,6 +1058,9 @@ function safeAgent_(agent, includePassword) {
     photo: agent.photo || '',
     aadhaarDoc: agent.aadhaarDoc || '',
     bankDoc: agent.bankDoc || '',
+    agreementScanUrl: agent.agreementScanUrl || '',
+    agreementScanUploadedAt: agent.agreementScanUploadedAt || '',
+    agreementScanUploadedBy: agent.agreementScanUploadedBy || '',
     regCommission: agent.regCommission || '30',
     marriageCommission: agent.marriageCommission || '25'
   };
