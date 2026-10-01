@@ -160,6 +160,10 @@ function bindUi() {
   if ($("#dashboardSearch")) {
     $("#dashboardSearch").addEventListener("input", (event) => {
       state.dashboardSearch = event.target.value || "";
+      if (state.session?.role === "admin" && state.activeTab === "overview" && state.dashboardSearch.trim()) {
+        state.activeTab = "profiles";
+        renderTabs();
+      }
       renderDashboard();
     });
   }
@@ -221,6 +225,13 @@ function bindUi() {
   $("#storyForm").addEventListener("submit", submitStory);
   $("#clearStoryForm").addEventListener("click", () => $("#storyForm").reset());
   $("#logoutBtn").addEventListener("click", logout);
+  $$("[data-goto-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeTab = button.dataset.gotoTab || "profiles";
+      renderTabs();
+      renderDashboard();
+    });
+  });
 }
 
 async function api(action, payload = {}) {
@@ -396,6 +407,7 @@ async function submitLogin(event) {
     const result = await api("login", payload);
     if (!result.ok) throw new Error(result.error || "Login failed");
     state.session = result.session;
+    state.activeTab = result.session?.role === "admin" ? "overview" : "profiles";
     closeModals();
     showDashboard();
     await loadDashboardData();
@@ -419,14 +431,18 @@ function showDashboard() {
   document.body.classList.toggle("agent-mode", state.session.role === "agent");
   $$(".public-view").forEach((element) => element.classList.add("hidden"));
   $("#dashboardSection").classList.remove("hidden");
-  $("#dashboardTitle").textContent = state.session.role === "admin" ? "Admin Dashboard" : "Agent Dashboard";
+  const displayName = state.session.name || (state.session.role === "admin" ? "Admin" : "Agent");
+  $("#dashboardTitle").textContent = `Welcome Back, ${displayName} 👋`;
   $("#dashboardSub").textContent = state.session.role === "admin"
-    ? "Manage agents, client profiles, payments and payouts."
+    ? "Here's what's happening with Bibah Bandhan today."
     : "Manage your clients, payments, account and view commission details.";
-  $("#sessionName").textContent = state.session.name || state.session.role;
+  $("#sessionName").textContent = displayName;
+  if ($("#sessionRoleLabel")) {
+    $("#sessionRoleLabel").textContent = state.session.role === "admin" ? "Super Admin" : "Agent";
+  }
   renderAgentDashboardPhoto(state.currentAgent);
   if (state.session.role === "admin") {
-    $("#sessionInfo").textContent = "Admin can see every profile, agent and payout.";
+    
     $("#agentCommissionBar")?.classList.add("hidden");
     $("#agentIdCardBtn")?.classList.add("hidden");
   } else {
@@ -449,29 +465,48 @@ function showDashboard() {
 function renderAgentDashboardPhoto(agent) {
   const box = $("#agentDashboardPhoto");
   if (!box) return;
-  if (state.session?.role !== "agent") {
-    box.classList.add("hidden");
-    box.innerHTML = "";
+  box.classList.remove("hidden");
+  if (state.session?.role === "agent") {
+    const photo = photoUrl(agent?.photo);
+    box.innerHTML = photo
+      ? `<img src="${escapeAttr(photo)}" referrerpolicy="no-referrer" alt="${escapeAttr(agent?.name || "Agent")}">`
+      : initials(agent?.name || state.session?.name);
     return;
   }
-  const photo = photoUrl(agent?.photo);
-  box.classList.remove("hidden");
-  box.innerHTML = photo
-    ? `<img src="${escapeAttr(photo)}" referrerpolicy="no-referrer" alt="${escapeAttr(agent?.name || "Agent")}">`
-    : `<div class="agent-dashboard-initials">${initials(agent?.name || state.session?.name)}</div>`;
+  box.innerHTML = initials(state.session?.name || "Admin");
 }
 
 function renderTabs() {
   const tabs = $("#dashboardTabs");
-  const items = state.session.role === "admin"
-    ? [["profiles", "Profiles"], ["meetings", "Meeting Schedule"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agents", "Agents"], ["agentPayouts", "Agent Payouts"], ["commonExpenses", "Expense Book"], ["agentForm", "Create Agent"], ["selfDeclaration", "Self Declaration"], ["stories", "Stories"]]
-    : [["profiles", "My Clients"], ["marriages", "Marriages"], ["payments", "Client Payments"], ["agentPayouts", "My Payouts"], ["myAccount", "My Account"]];
+  const isAdmin = state.session.role === "admin";
+  const items = isAdmin
+    ? [
+        ["overview", "Dashboard", "fa-gauge-high"],
+        ["profiles", "Profiles", "fa-user-group"],
+        ["agents", "Agents", "fa-user-tie"],
+        ["payments", "Payments", "fa-indian-rupee-sign"],
+        ["agentPayouts", "Agent Payouts", "fa-hand-holding-dollar"],
+        ["commonExpenses", "Common Expenses", "fa-receipt"],
+        ["stories", "Stories", "fa-heart"],
+        ["meetings", "Meeting Schedule", "fa-calendar-days"],
+        ["marriages", "Marriages", "fa-ring"],
+        ["agentForm", "Create Agent", "fa-user-plus"],
+        ["selfDeclaration", "Self Declaration", "fa-file-signature"],
+      ]
+    : [
+        ["profiles", "My Clients", "fa-user-group"],
+        ["marriages", "Marriages", "fa-ring"],
+        ["payments", "Client Payments", "fa-indian-rupee-sign"],
+        ["agentPayouts", "My Payouts", "fa-hand-holding-dollar"],
+        ["myAccount", "My Account", "fa-id-card"],
+      ];
   tabs.innerHTML = "";
-  items.forEach(([key, label]) => {
+  tabs.className = "admin-nav";
+  items.forEach(([key, label, icon]) => {
     const button = document.createElement("button");
-    button.className = `btn tab ${state.activeTab === key ? "active" : ""}`;
     button.type = "button";
-    button.textContent = label;
+    button.className = `admin-nav-item ${state.activeTab === key ? "active" : ""}`;
+    button.innerHTML = `<i class="fa-solid ${icon}"></i><span>${escapeHtml(label)}</span>`;
     button.addEventListener("click", () => {
       state.activeTab = key;
       renderTabs();
@@ -481,32 +516,53 @@ function renderTabs() {
   });
 }
 
+let adminMonthlyChart = null;
+let adminProfileChart = null;
+
 function renderDashboard() {
+  updateAdminClock();
   const activeProfiles = activeClientProfiles();
   const filteredProfiles = filterDashboardProfiles(activeProfiles);
+  const isAdmin = state.session.role === "admin";
+  const isOverview = isAdmin && state.activeTab === "overview";
+
   $("#dashTotal").textContent = activeProfiles.length;
   $("#dashPending").textContent = activeProfiles.filter((profile) => profile.status === "pending").length;
   $("#dashVerified").textContent = activeProfiles.filter((profile) => profile.status === "verified").length;
   if ($("#dashMarriages")) $("#dashMarriages").textContent = completedMarriageProfiles().length;
   if ($("#dashMonthMarriages")) $("#dashMonthMarriages").textContent = marriageCountThisMonth();
-  if ($("#dashAgents")) $("#dashAgents").textContent = state.session.role === "admin" ? state.agents.length : "-";
+  if ($("#dashAgents")) $("#dashAgents").textContent = isAdmin ? state.agents.length : "-";
+
+  $("#dashboardOverview")?.classList.toggle("hidden", !isOverview);
+  $("#agentDashStats")?.classList.toggle("hidden", isAdmin);
+  $("#dashboardTablePanel")?.classList.toggle("hidden", isOverview);
 
   const filterPanel = $("#dashboardFilter");
-  $("#storyTools").classList.toggle("hidden", !(state.activeTab === "stories" && state.session.role === "admin"));
+  $("#storyTools").classList.toggle("hidden", !(state.activeTab === "stories" && isAdmin));
   if (filterPanel) {
     const showFilter = state.activeTab === "profiles";
-    filterPanel.classList.toggle("hidden", !showFilter);
-    $("#dashboardSearch").value = state.dashboardSearch || "";
+    filterPanel.classList.toggle("hidden", !showFilter || isOverview);
+    if ($("#dashboardSearch")) $("#dashboardSearch").value = state.dashboardSearch || "";
     $("#dashboardSearchCount").textContent = showFilter
       ? `${filteredProfiles.length} / ${activeProfiles.length} active client`
       : "";
   }
 
-  $("#agentTools").classList.toggle("hidden", !(state.activeTab === "agentForm" && state.session.role === "admin"));
-  $("#selfDeclarationTools")?.classList.toggle("hidden", !(state.activeTab === "selfDeclaration" && state.session.role === "admin"));
+  if ($("#adminNotifyCount")) {
+    const pendingCount = activeProfiles.filter((profile) => profile.status === "pending").length;
+    $("#adminNotifyCount").textContent = String(pendingCount);
+  }
+
+  $("#agentTools").classList.toggle("hidden", !(state.activeTab === "agentForm" && isAdmin));
+  $("#selfDeclarationTools")?.classList.toggle("hidden", !(state.activeTab === "selfDeclaration" && isAdmin));
   $("#myAccountTools")?.classList.toggle("hidden", !(state.activeTab === "myAccount" && state.session.role === "agent"));
-  $("#agentPayoutTools")?.classList.toggle("hidden", !(state.activeTab === "agentPayouts" && state.session.role === "admin"));
-  $("#commonExpenseTools")?.classList.toggle("hidden", !(state.activeTab === "commonExpenses" && state.session.role === "admin"));
+  $("#agentPayoutTools")?.classList.toggle("hidden", !(state.activeTab === "agentPayouts" && isAdmin));
+  $("#commonExpenseTools")?.classList.toggle("hidden", !(state.activeTab === "commonExpenses" && isAdmin));
+
+  if (isOverview) {
+    renderAdminOverview(activeProfiles);
+    return;
+  }
 
   if (state.activeTab === "payments") {
     renderPaymentTable();
@@ -530,6 +586,382 @@ function renderDashboard() {
     renderStoryTable();
   } else {
     renderProfileTable(filteredProfiles);
+  }
+}
+
+function updateAdminClock() {
+  const clock = $("#adminClock");
+  if (!clock || !state.session) return;
+  const now = new Date();
+  const formatted = now.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  clock.textContent = formatted.replace(",", " |");
+  clock.setAttribute("datetime", now.toISOString());
+}
+
+function moneyInr(value) {
+  return `₹${Number(value || 0).toLocaleString("en-IN")}`;
+}
+
+function sumPaymentCredits(list) {
+  return cleanPayments(list).reduce((sum, payment) => {
+    return paymentDirection(payment) === "credit" ? sum + Number(payment.amount || 0) : sum;
+  }, 0);
+}
+
+function sumPayouts(list) {
+  return cleanAgentPayouts(list).reduce((sum, payout) => sum + Number(payout.amount || 0), 0);
+}
+
+function sumExpenses(list) {
+  return cleanCommonExpenses(list).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+}
+
+function profileLocation(profile = {}) {
+  return [profile.district, profile.villageTown, profile.city].filter(Boolean).join(", ") || "—";
+}
+
+function profileDisplayAge(profile = {}) {
+  if (profile.age) return profile.age;
+  if (!profile.dob) return "—";
+  const dob = new Date(profile.dob);
+  if (Number.isNaN(dob.getTime())) return "—";
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age -= 1;
+  return age;
+}
+
+function adminStatusTag(status) {
+  const clean = String(status || "pending").toLowerCase();
+  const label = clean === "verified" ? "Active" : clean === "pending" ? "Pending" : "Inactive";
+  const cls = clean === "verified" ? "verified" : clean === "pending" ? "pending" : "inactive";
+  return `<span class="admin-tag ${cls}">${escapeHtml(label)}</span>`;
+}
+
+function monthKeyFromDate(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^\d{4}-\d{2}/.test(text)) return text.slice(0, 7);
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function lastNMonthLabels(count = 9) {
+  const labels = [];
+  const now = new Date();
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels.push(date.toLocaleString("en-IN", { month: "short" }));
+  }
+  return labels;
+}
+
+function lastNMonthKeys(count = 9) {
+  const keys = [];
+  const now = new Date();
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    keys.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return keys;
+}
+
+function renderAdminOverview(activeProfiles) {
+  const allProfiles = cleanProfiles(state.profiles);
+  const paymentsTotal = sumPaymentCredits(state.payments);
+  const payoutsTotal = sumPayouts(state.agentPayouts);
+  const expensesTotal = sumExpenses(state.commonExpenses);
+
+  if ($("#dashOverviewProfiles")) $("#dashOverviewProfiles").textContent = String(allProfiles.length);
+  if ($("#dashOverviewAgents")) $("#dashOverviewAgents").textContent = String(state.agents.length);
+  if ($("#dashOverviewPayments")) $("#dashOverviewPayments").textContent = moneyInr(paymentsTotal);
+  if ($("#dashOverviewPayouts")) $("#dashOverviewPayouts").textContent = moneyInr(payoutsTotal);
+  if ($("#dashOverviewExpenses")) $("#dashOverviewExpenses").textContent = moneyInr(expensesTotal);
+
+  const verified = activeProfiles.filter((profile) => profile.status === "verified").length;
+  const pending = activeProfiles.filter((profile) => profile.status === "pending").length;
+  const inactive = Math.max(activeProfiles.length - verified - pending, 0);
+  if ($("#dashTrendProfiles")) $("#dashTrendProfiles").textContent = `${verified} verified · ${pending} pending`;
+  if ($("#dashTrendAgents")) $("#dashTrendAgents").textContent = `${state.agents.filter((a) => String(a.status || "").toLowerCase() === "active").length} active agents`;
+  if ($("#dashTrendPayments")) $("#dashTrendPayments").textContent = `${cleanPayments(state.payments).length} records`;
+  if ($("#dashTrendPayouts")) $("#dashTrendPayouts").textContent = `${cleanAgentPayouts(state.agentPayouts).length} payouts`;
+  if ($("#dashTrendExpenses")) $("#dashTrendExpenses").textContent = `${cleanCommonExpenses(state.commonExpenses).length} entries`;
+
+  renderOverviewRecentProfiles(activeProfiles);
+  renderOverviewRecentPayments();
+  renderOverviewStories();
+  renderOverviewExpenses();
+  renderOverviewAgents();
+  renderOverviewActivity(activeProfiles);
+  renderAdminCharts(activeProfiles, { verified, pending, inactive });
+}
+
+function renderOverviewRecentProfiles(list) {
+  const body = $("#overviewRecentProfiles");
+  if (!body) return;
+  const rows = [...list].slice(-6).reverse();
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="5">No profiles yet.</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map((profile) => {
+    const photo = photoUrl(profile.photo);
+    const img = photo
+      ? `<img class="admin-mini-photo" src="${escapeAttr(photo)}" alt="" referrerpolicy="no-referrer">`
+      : `<div class="admin-mini-photo" style="display:grid;place-items:center;font-weight:800;color:#a7193f">${initials(profile.fullName)}</div>`;
+    return `<tr>
+      <td>${img}</td>
+      <td><strong>${escapeHtml(profile.fullName || "—")}</strong></td>
+      <td>${escapeHtml(String(profileDisplayAge(profile)))}</td>
+      <td>${escapeHtml(profileLocation(profile))}</td>
+      <td>${adminStatusTag(profile.status)}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderOverviewRecentPayments() {
+  const body = $("#overviewRecentPayments");
+  if (!body) return;
+  const payments = [...cleanPayments(state.payments)].slice(-5).reverse();
+  if (!payments.length) {
+    body.innerHTML = `<tr><td colspan="4">No payments yet.</td></tr>`;
+    return;
+  }
+  body.innerHTML = payments.map((payment) => {
+    const profile = cleanProfiles(state.profiles).find((item) => String(item.id) === String(payment.profileId));
+    const name = payment.clientName || profile?.fullName || payment.profileId || "Client";
+    const date = payment.paymentDate || payment.date || "—";
+    const status = paymentDirection(payment) === "credit" ? "Paid" : "Debit";
+    const tagClass = status === "Paid" ? "verified" : "pending";
+    return `<tr>
+      <td>${escapeHtml(date)}</td>
+      <td>${escapeHtml(name)}</td>
+      <td><strong>${moneyInr(payment.amount)}</strong></td>
+      <td><span class="admin-tag ${tagClass}">${status}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+function renderOverviewStories() {
+  const grid = $("#overviewStories");
+  if (!grid) return;
+  const stories = cleanStories(state.stories).slice(-4).reverse();
+  if (!stories.length) {
+    grid.innerHTML = `<p class="note">No stories yet.</p>`;
+    return;
+  }
+  grid.innerHTML = stories.map((story) => {
+    const photo = photoUrl(story.photo);
+    const img = photo
+      ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(story.coupleName || "Story")}" referrerpolicy="no-referrer">`
+      : `<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#fce7f3,#ede9fe);display:grid;place-items:center;color:#7a1538;font-weight:800">BB</div>`;
+    return `<article class="admin-story-card">
+      ${img}
+      <div><strong>${escapeHtml(story.coupleName || "Success Story")}</strong><em>${escapeHtml(story.matchDate || "")}</em></div>
+    </article>`;
+  }).join("");
+}
+
+function renderOverviewExpenses() {
+  const body = $("#overviewExpenses");
+  if (!body) return;
+  const expenses = [...cleanCommonExpenses(state.commonExpenses)].slice(-5).reverse();
+  if (!expenses.length) {
+    body.innerHTML = `<tr><td colspan="3">No expenses yet.</td></tr>`;
+    return;
+  }
+  body.innerHTML = expenses.map((expense) => `<tr>
+    <td>${escapeHtml(expense.expenseDate || expense.date || "—")}</td>
+    <td>${escapeHtml(expense.description || expense.category || "—")}</td>
+    <td><strong>${moneyInr(expense.amount)}</strong></td>
+  </tr>`).join("");
+}
+
+function renderOverviewAgents() {
+  const list = $("#overviewAgents");
+  if (!list) return;
+  const agents = state.agents.slice(0, 5);
+  if (!agents.length) {
+    list.innerHTML = `<p class="note">No agents yet.</p>`;
+    return;
+  }
+  list.innerHTML = agents.map((agent) => {
+    const photo = photoUrl(agent.photo);
+    const avatar = photo
+      ? `<img class="admin-mini-photo" src="${escapeAttr(photo)}" alt="" referrerpolicy="no-referrer">`
+      : `<div class="admin-mini-photo" style="display:grid;place-items:center;font-weight:800;color:#2563eb">${initials(agent.name)}</div>`;
+    const status = String(agent.status || "active").toLowerCase();
+    const tag = status === "active" ? "verified" : "pending";
+    const label = status === "active" ? "Active" : "Pending";
+    return `<div class="admin-agent-row">
+      ${avatar}
+      <div style="flex:1;min-width:0">
+        <strong>${escapeHtml(agent.name || "Agent")}</strong>
+        <small>${escapeHtml(agent.phone || formatAgentAddress(agent))}</small>
+      </div>
+      <span class="admin-tag ${tag}">${label}</span>
+    </div>`;
+  }).join("");
+}
+
+function renderOverviewActivity(activeProfiles) {
+  const box = $("#overviewActivity");
+  if (!box) return;
+  const events = [];
+  activeProfiles.slice(-3).reverse().forEach((profile) => {
+    events.push({
+      icon: "fa-user-plus",
+      title: "Profile updated",
+      time: profile.updatedAt || profile.createdAt || "Recently",
+      text: `${profile.fullName || "Client"} (${profile.id || ""})`,
+    });
+  });
+  cleanPayments(state.payments).slice(-2).reverse().forEach((payment) => {
+    events.push({
+      icon: "fa-indian-rupee-sign",
+      title: "Payment recorded",
+      time: payment.paymentDate || payment.date || "Recently",
+      text: `${moneyInr(payment.amount)} · ${payment.profileId || ""}`,
+    });
+  });
+  cleanStories(state.stories).slice(-1).forEach((story) => {
+    events.push({
+      icon: "fa-heart",
+      title: "Story saved",
+      time: story.matchDate || "Recently",
+      text: story.coupleName || "Success story",
+    });
+  });
+  if (!events.length) {
+    box.innerHTML = `<p class="note">No recent activity.</p>`;
+    return;
+  }
+  box.innerHTML = events.slice(0, 6).map((event) => `<div class="admin-activity-item">
+    <div class="admin-activity-icon"><i class="fa-solid ${event.icon}"></i></div>
+    <div>
+      <strong>${escapeHtml(event.title)}</strong>
+      <span>${escapeHtml(event.text)}</span>
+      <em>${escapeHtml(String(event.time))}</em>
+    </div>
+  </div>`).join("");
+}
+
+function renderAdminCharts(activeProfiles, statusCounts) {
+  if (typeof Chart === "undefined") return;
+  const monthKeys = lastNMonthKeys(9);
+  const monthLabels = lastNMonthLabels(9);
+  const paymentTotals = monthKeys.map((key) =>
+    cleanPayments(state.payments).reduce((sum, payment) => {
+      if (monthKeyFromDate(payment.paymentDate || payment.date) !== key) return sum;
+      return paymentDirection(payment) === "credit" ? sum + Number(payment.amount || 0) : sum;
+    }, 0)
+  );
+  const payoutTotals = monthKeys.map((key) =>
+    cleanAgentPayouts(state.agentPayouts).reduce((sum, payout) => {
+      if (monthKeyFromDate(payout.payoutDate || payout.date) !== key) return sum;
+      return sum + Number(payout.amount || 0);
+    }, 0)
+  );
+
+  const monthlyCanvas = $("#chartMonthlyOverview");
+  if (monthlyCanvas) {
+    if (adminMonthlyChart) adminMonthlyChart.destroy();
+    adminMonthlyChart = new Chart(monthlyCanvas, {
+      type: "line",
+      data: {
+        labels: monthLabels,
+        datasets: [
+          {
+            label: "Payments",
+            data: paymentTotals,
+            borderColor: "#2563eb",
+            backgroundColor: "rgba(37, 99, 235, 0.12)",
+            tension: 0.35,
+            fill: true,
+          },
+          {
+            label: "Payouts",
+            data: payoutTotals,
+            borderColor: "#db2777",
+            backgroundColor: "rgba(219, 39, 119, 0.1)",
+            tension: 0.35,
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom" } },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: (v) => `₹${v}` } },
+        },
+      },
+    });
+  }
+
+  const total = Math.max(activeProfiles.length, 1);
+  const { verified, pending, inactive } = statusCounts;
+  const donutCanvas = $("#chartProfileStatus");
+  const legend = $("#profileStatusLegend");
+  if (legend) {
+    legend.innerHTML = [
+      ["Active", verified, "#059669"],
+      ["Pending", pending, "#ea580c"],
+      ["Inactive", inactive, "#dc2626"],
+    ].map(([label, count, color]) => {
+      const pct = Math.round((count / total) * 100);
+      return `<div class="admin-legend-item"><span class="admin-legend-dot" style="background:${color}"></span><span>${label}: <strong>${count}</strong> (${pct}%)</span></div>`;
+    }).join("");
+  }
+  if (donutCanvas) {
+    if (adminProfileChart) adminProfileChart.destroy();
+    adminProfileChart = new Chart(donutCanvas, {
+      type: "doughnut",
+      data: {
+        labels: ["Active", "Pending", "Inactive"],
+        datasets: [{
+          data: [verified, pending, inactive],
+          backgroundColor: ["#059669", "#ea580c", "#dc2626"],
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "68%",
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: true },
+        },
+      },
+      plugins: [{
+        id: "centerText",
+        beforeDraw(chart) {
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return;
+          ctx.save();
+          ctx.font = "bold 1.1rem Inter, sans-serif";
+          ctx.fillStyle = "#111827";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(String(activeProfiles.length), (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2 - 6);
+          ctx.font = "600 .72rem Inter, sans-serif";
+          ctx.fillStyle = "#6b7280";
+          ctx.fillText("Total", (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2 + 12);
+          ctx.restore();
+        },
+      }],
+    });
   }
 }
 
