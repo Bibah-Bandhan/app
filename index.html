@@ -4140,6 +4140,301 @@
 }
 </style>
 
+
+<style id="bibah-glass-dashboard-v5">
+/* =========================================================
+   BIBAH BANDHAN — REAL GLASS DASHBOARD
+   Keeps the original brand colours; adds glass depth/animation.
+   Dashboard only.
+   ========================================================= */
+body.dashboard-mode #dashboardSection{
+  background:
+    radial-gradient(circle at 12% 8%, rgba(167,25,63,.10), transparent 30%),
+    radial-gradient(circle at 88% 20%, rgba(216,164,58,.10), transparent 28%),
+    linear-gradient(135deg,#fffaf7 0%,#f8f2ef 48%,#f4ece9 100%);
+  position:relative;
+  isolation:isolate;
+}
+body.dashboard-mode #dashboardSection::before,
+body.dashboard-mode #dashboardSection::after{
+  content:"";
+  position:fixed;
+  width:280px;height:280px;border-radius:50%;
+  filter:blur(55px);
+  pointer-events:none;
+  z-index:-1;
+  opacity:.26;
+  animation:bbGlassFloat 10s ease-in-out infinite alternate;
+}
+body.dashboard-mode #dashboardSection::before{background:rgba(167,25,63,.16);left:18%;top:12%}
+body.dashboard-mode #dashboardSection::after{background:rgba(216,164,58,.13);right:8%;bottom:8%;animation-delay:-4s}
+@keyframes bbGlassFloat{from{transform:translate3d(-12px,-8px,0)}to{transform:translate3d(18px,14px,0)}}
+
+/* sidebar: dark burgundy glass, not a new colour */
+body.dashboard-mode .admin-sidebar{
+  background:
+    linear-gradient(145deg,rgba(91,16,44,.94),rgba(122,21,56,.88)),
+    linear-gradient(180deg,#5b102c,#7a1538);
+  border-right:1px solid rgba(255,255,255,.24);
+  box-shadow:8px 0 30px rgba(91,16,44,.20), inset -1px 0 0 rgba(255,255,255,.10);
+  backdrop-filter:blur(20px) saturate(135%);
+  -webkit-backdrop-filter:blur(20px) saturate(135%);
+}
+body.dashboard-mode .admin-sidebar::after{
+  content:"";
+  position:absolute;inset:0;
+  background:linear-gradient(115deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,.04) 22%,transparent 45%);
+  pointer-events:none;
+}
+body.dashboard-mode .admin-sidebar-brand{
+  background:rgba(255,255,255,.055);
+  border-bottom-color:rgba(255,255,255,.18);
+  box-shadow:inset 0 -1px rgba(255,255,255,.05);
+}
+body.dashboard-mode .admin-nav-item{
+  border:1px solid transparent;
+  transition:transform .22s ease,background .22s ease,box-shadow .22s ease,border-color .22s ease;
+}
+body.dashboard-mode .admin-nav-item:hover{
+  transform:translateX(3px);
+  background:rgba(255,255,255,.12);
+  border-color:rgba(255,255,255,.18);
+  box-shadow:inset 1px 1px rgba(255,255,255,.12),0 8px 18px rgba(0,0,0,.08);
+}
+body.dashboard-mode .admin-nav-item.active{
+  background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(255,255,255,.72));
+  border-color:rgba(255,255,255,.92);
+  box-shadow:inset 1px 1px rgba(255,255,255,.95),0 8px 22px rgba(0,0,0,.18);
+}
+
+/* topbar — floating frosted glass */
+body.dashboard-mode .admin-topbar{
+  background:rgba(255,255,255,.62);
+  border-bottom:1px solid rgba(255,255,255,.72);
+  box-shadow:0 10px 28px rgba(87,31,27,.07),inset 0 1px rgba(255,255,255,.95);
+  backdrop-filter:blur(20px) saturate(145%);
+  -webkit-backdrop-filter:blur(20px) saturate(145%);
+}
+body.dashboard-mode .admin-search-wrap input,
+body.dashboard-mode .admin-notify,
+body.dashboard-mode #adminClock{
+  background:rgba(255,255,255,.54);
+  border-color:rgba(255,255,255,.86);
+  box-shadow:inset 1px 1px rgba(255,255,255,.95),0 7px 18px rgba(87,31,27,.06);
+  backdrop-filter:blur(12px);
+}
+body.dashboard-mode .admin-search-wrap input:focus{
+  background:rgba(255,255,255,.78);
+  box-shadow:0 0 0 3px rgba(167,25,63,.10),inset 1px 1px rgba(255,255,255,.95),0 8px 20px rgba(87,31,27,.07);
+}
+body.dashboard-mode .admin-notify{transition:transform .2s ease,box-shadow .2s ease}
+body.dashboard-mode .admin-notify:hover{transform:translateY(-2px);box-shadow:inset 1px 1px #fff,0 10px 22px rgba(87,31,27,.11)}
+
+/* headings */
+body.dashboard-mode .admin-welcome-row h2{color:#4f1230;text-shadow:0 1px 0 #fff}
+body.dashboard-mode .admin-welcome-row p,
+body.dashboard-mode .admin-user-text small{color:#6d5a56}
+
+/* glass cards/panels — original colour remains visible */
+body.dashboard-mode .admin-stat-card,
+body.dashboard-mode .admin-panel{
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(135deg,rgba(255,255,255,.72),rgba(255,255,255,.46));
+  border:1px solid rgba(255,255,255,.86);
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,.95),
+    inset -1px -1px 0 rgba(167,25,63,.035),
+    0 7px 0 rgba(91,16,44,.055),
+    0 20px 38px rgba(87,31,27,.11);
+  backdrop-filter:blur(18px) saturate(125%);
+  -webkit-backdrop-filter:blur(18px) saturate(125%);
+  transition:transform .28s cubic-bezier(.2,.75,.25,1),box-shadow .28s ease,border-color .28s ease;
+}
+body.dashboard-mode .admin-stat-card::before,
+body.dashboard-mode .admin-panel::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(115deg,rgba(255,255,255,.58),transparent 25%,transparent 70%,rgba(255,255,255,.18));
+  pointer-events:none;
+}
+body.dashboard-mode .admin-stat-card::after{
+  content:"";
+  position:absolute;
+  left:-35%;top:-80%;
+  width:45%;height:260%;
+  transform:rotate(24deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);
+  pointer-events:none;
+  animation:bbGlassShine 7s ease-in-out infinite;
+}
+@keyframes bbGlassShine{
+  0%,55%{left:-45%;opacity:0}
+  65%{opacity:1}
+  82%,100%{left:125%;opacity:0}
+}
+body.dashboard-mode .admin-stat-card:hover,
+body.dashboard-mode .admin-panel:hover{
+  transform:translateY(-4px);
+  border-color:rgba(255,255,255,.98);
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,1),
+    0 9px 0 rgba(91,16,44,.065),
+    0 27px 48px rgba(87,31,27,.15);
+}
+body.dashboard-mode .admin-stat-body,
+body.dashboard-mode .admin-panel-head,
+body.dashboard-mode .admin-chart-wrap,
+body.dashboard-mode .admin-donut-wrap,
+body.dashboard-mode .admin-mini-table,
+body.dashboard-mode .admin-quick-grid,
+body.dashboard-mode .admin-agent-list,
+body.dashboard-mode .admin-activity,
+body.dashboard-mode .admin-story-grid{position:relative;z-index:1}
+body.dashboard-mode .admin-stat-body strong{color:#4f1230}
+body.dashboard-mode .admin-panel-head h3{color:#4f1230}
+
+/* stat icon keeps its existing pink/blue/green/orange/purple identity */
+body.dashboard-mode .admin-stat-icon{
+  border:1px solid rgba(255,255,255,.76);
+  box-shadow:inset 1px 1px rgba(255,255,255,.85),0 8px 18px rgba(87,31,27,.08);
+}
+
+/* quick buttons: coloured glass */
+body.dashboard-mode .admin-quick-btn{
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.50);
+  box-shadow:inset 1px 1px rgba(255,255,255,.38),inset -1px -1px rgba(0,0,0,.08),0 7px 0 rgba(80,16,51,.12),0 15px 24px rgba(31,23,21,.13);
+  transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;
+}
+body.dashboard-mode .admin-quick-btn::after{
+  content:"";
+  position:absolute;inset:0;
+  background:linear-gradient(120deg,rgba(255,255,255,.30),transparent 35%,rgba(255,255,255,.08));
+  pointer-events:none;
+}
+body.dashboard-mode .admin-quick-btn:hover{
+  transform:translateY(-4px);
+  filter:brightness(1.04);
+  box-shadow:inset 1px 1px rgba(255,255,255,.50),0 9px 0 rgba(80,16,51,.12),0 23px 34px rgba(31,23,21,.18);
+}
+body.dashboard-mode .admin-quick-btn:active{
+  transform:translateY(3px) scale(.985);
+  box-shadow:inset 2px 2px 8px rgba(0,0,0,.15),0 2px 0 rgba(80,16,51,.10),0 8px 15px rgba(31,23,21,.12);
+}
+
+/* table as a glass sheet */
+body.dashboard-mode .table-wrap{
+  background:rgba(255,255,255,.48);
+  border:1px solid rgba(255,255,255,.82);
+  box-shadow:inset 1px 1px rgba(255,255,255,.9),0 10px 26px rgba(87,31,27,.08);
+  backdrop-filter:blur(12px);
+}
+body.dashboard-mode .admin-mini-table th{background:rgba(255,248,244,.52)}
+body.dashboard-mode .admin-mini-table td{border-bottom-color:rgba(167,25,63,.07)}
+body.dashboard-mode .admin-mini-table tr:hover{background:rgba(255,255,255,.34)}
+
+/* normal .btns used by dashboard */
+body.dashboard-mode .dashboard-actions .btn{
+  border:1px solid rgba(255,255,255,.42);
+  box-shadow:inset 1px 1px rgba(255,255,255,.38),0 6px 0 rgba(0,0,0,.10),0 13px 24px rgba(0,0,0,.14);
+  transition:transform .17s ease,box-shadow .17s ease,filter .17s ease;
+}
+body.dashboard-mode .dashboard-actions .btn:hover{
+  transform:translateY(-2px);
+  filter:brightness(1.05);
+}
+body.dashboard-mode .dashboard-actions .btn:active{
+  transform:translateY(3px);
+  box-shadow:inset 2px 2px 7px rgba(0,0,0,.14),0 2px 0 rgba(0,0,0,.10),0 7px 13px rgba(0,0,0,.12);
+}
+
+/* small glass tags */
+body.dashboard-mode .admin-tag,
+body.dashboard-mode .admin-activity-icon{
+  border:1px solid rgba(255,255,255,.70);
+  box-shadow:inset 1px 1px rgba(255,255,255,.8),0 5px 12px rgba(87,31,27,.07);
+}
+
+/* reduced motion/accessibility */
+@media (prefers-reduced-motion:reduce){
+  body.dashboard-mode #dashboardSection::before,
+  body.dashboard-mode #dashboardSection::after,
+  body.dashboard-mode .admin-stat-card::after{animation:none}
+  body.dashboard-mode .admin-stat-card,
+  body.dashboard-mode .admin-panel,
+  body.dashboard-mode .admin-nav-item,
+  body.dashboard-mode .admin-quick-btn,
+  body.dashboard-mode .dashboard-actions .btn{transition:none}
+}
+@media (max-width:900px){
+  body.dashboard-mode .admin-stat-card,
+  body.dashboard-mode .admin-panel{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+}
+</style>
+<style id="monthly-overview-mobile-fix">
+/* Mobile fix: Monthly Overview / Profile Status must not create a wide right-side overflow */
+@media (max-width: 980px) {
+  .admin-charts-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .admin-charts-row > .admin-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-chart-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .admin-chart-wrap canvas {
+    max-width: 100% !important;
+  }
+
+  .admin-donut-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .admin-donut-wrap canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .admin-legend {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-chart-wrap {
+    height: 205px !important;
+  }
+
+  .admin-panel {
+    max-width: 100% !important;
+  }
+}
+</style>
+
 </head>
 <body class="bn protect-page">
   <header class="topbar">
