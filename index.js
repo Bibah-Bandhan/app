@@ -1163,6 +1163,8 @@ function renderMeetingTable() {
       <td><div class="row-actions"></div></td>`;
     const actions = tr.querySelector(".row-actions");
     addAction(actions, "Edit", "btn-blue", () => openMeetingModal(meeting));
+    addAction(actions, "Print Record", "btn-green", () => printMeetingRecord(meeting));
+    addAction(actions, "Upload Signed Copy", "btn-gold", () => uploadMeetingRecordScan(meeting));
     addAction(actions, "Result", "btn-gold", () => openMeetingModal({ ...meeting, status: meeting.status || "Completed" }));
     addAction(actions, "Delete", "btn-danger", () => deleteMeeting(meeting));
     body.appendChild(tr);
@@ -1179,6 +1181,8 @@ function openMeetingModal(meeting = {}, profile = null) {
   form.elements.status.value = meeting.status || "Scheduled";
   form.elements.meetingDate.value = formatDate(meeting.meetingDate) || new Date().toISOString().slice(0, 10);
   form.elements.meetingTime.value = meeting.meetingTime || "11:00";
+  form.elements.meetingPlace.value = meeting.meetingPlace || "";
+  form.elements.meetingAddress.value = meeting.meetingAddress || "";
   form.elements.duration.value = meeting.duration || "45";
   form.elements.meetingType.value = meeting.meetingType || "Family Meeting";
   form.elements.maleProfileId.value = meeting.maleProfileId || "";
@@ -1238,6 +1242,58 @@ async function submitMeeting(event) {
     button.disabled = false;
     button.textContent = "Save Meeting";
   }
+}
+
+
+function meetingDateLong(value) {
+  if (!value) return "";
+  const d = new Date(`${String(value).slice(0,10)}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("en-GB", {day:"2-digit", month:"long", year:"numeric"});
+}
+function meetingTimeLong(value) {
+  if (!value) return "";
+  const parts = String(value).split(":");
+  if (parts.length < 2) return value;
+  const d = new Date(); d.setHours(Number(parts[0]), Number(parts[1]), 0, 0);
+  return d.toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit", hour12:true});
+}
+function meetingProfileDetails(profile, meetingName, id) {
+  const p = profile || {};
+  const address = [p.addressLine, p.villageTown && `Village/Town: ${p.villageTown}`, p.postOffice && `P.O.: ${p.postOffice}`, p.policestation && `P.S.: ${p.policestation}`, p.district && `District: ${p.district}`, p.state, p.pin].filter(Boolean).join(", ");
+  return {name:p.fullName||meetingName||"",id:p.id||id||"",father:p.fatherName||"",mother:p.motherName||"",address:address||""};
+}
+function printMeetingRecord(meeting) {
+  const male = meetingProfileDetails(findProfileById(meeting.maleProfileId), meeting.maleName, meeting.maleProfileId);
+  const female = meetingProfileDetails(findProfileById(meeting.femaleProfileId), meeting.femaleName, meeting.femaleProfileId);
+  const date = meetingDateLong(meeting.meetingDate), time = meetingTimeLong(meeting.meetingTime);
+  const esc = (v) => escapeHtml(String(v || ""));
+  const field = (label, value) => `<div class="field"><b>${label}</b><span>${esc(value) || "—"}</span></div>`;
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Family Meeting Record</title><style>
+  @page{size:A4;margin:13mm}*{box-sizing:border-box}body{font-family:"Noto Sans Bengali","Nirmala UI",Arial,sans-serif;color:#222;font-size:10px;line-height:1.4;margin:0}.head{text-align:center;border-bottom:2px solid #6b3c25;padding-bottom:7px;margin-bottom:8px}.phone{font-size:9px;text-align:right}.brand{font-size:17px;font-weight:800}.tag{font-size:10px;margin:3px 0}.sub{font-size:9px}h1{font-size:14px;text-align:center;margin:8px 0}h2{font-size:11px;margin:8px 0 4px;background:#f4eee8;padding:4px;border-left:3px solid #8a5436}.meta{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px}.field{display:flex;gap:4px;margin:2px 0;min-width:0}.field b{white-space:nowrap}.field span{overflow-wrap:anywhere}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}.panel{border:1px solid #c9b7aa;padding:6px;border-radius:3px;min-height:95px}.para{text-align:justify;margin:6px 0}.signs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:12px}.line{border-top:1px solid #333;padding-top:4px;text-align:center;margin-top:20px}.witnesses{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px}.witness{border-bottom:1px solid #777;height:18px}.foot{border-top:1px solid #bbb;margin-top:8px;padding-top:4px;text-align:center;font-size:8px}</style></head><body>
+  <div class="phone">Phone: 9475272791 | bibah-bandhan.com</div><header class="head"><div class="brand">BIBAH BANDHAN</div><div class="tag">বিশ্বাসের সাথে উপযুক্ত পাত্র-পাত্রীর সন্ধান কেন্দ্র</div><div class="sub">MARRIAGE BUREAU OFFICE · Tapan, Dakshin Dinajpur, West Bengal – 733127</div></header>
+  <h1>FAMILY MEETING RECORD &amp; RESOLUTION</h1><div class="meta">${field("Meeting ID:",meeting.meetingId)}${field("Date:",date)}${field("Day:",meeting.meetingDate?new Date(`${meeting.meetingDate}T12:00:00`).toLocaleDateString("en-IN",{weekday:"long"}):"")}${field("Time:",time)}${field("Meeting Place:",meeting.meetingPlace)}${field("Full Address:",meeting.meetingAddress)}</div>
+  <div class="pair"><section><h2>GROOM / MALE PARTY DETAILS</h2><div class="panel">${field("Name:",male.name)}${field("Profile ID:",male.id)}${field("Father's Name:",male.father)}${field("Mother's Name:",male.mother)}${field("Address:",male.address)}</div></section><section><h2>BRIDE / FEMALE PARTY DETAILS</h2><div class="panel">${field("Name:",female.name)}${field("Profile ID:",female.id)}${field("Father's Name:",female.father)}${field("Mother's Name:",female.mother)}${field("Address:",female.address)}</div></section></div>
+  <h2>MEETING PROCEEDINGS</h2><p class="para">আজ ${esc(date)} তারিখ ${esc(time)} সময়ে বিবাহ বন্ধন ম্যারেজ ব্যুরো অফিসের উদ্যোগে ${esc(male.name)} (পাত্র পক্ষ) ও ${esc(female.name)} (পাত্রী পক্ষ)-এর বিবাহ-সম্পর্কের বিষয়ে উভয় পক্ষের পরিবারের উপস্থিতিতে একটি পারিবারিক আলোচনা অনুষ্ঠিত হয়। সভায় উভয় পক্ষের পারিবারিক পরিচয়, পারস্পরিক পছন্দ, বিবাহ-সম্পর্কের উপযুক্ততা এবং ভবিষ্যতে এই সম্পর্ক এগিয়ে নেওয়ার বিষয়ে আলোচনা করা হয়। উভয় পক্ষকে নিজেদের মতামত প্রকাশের সুযোগ দেওয়া হয়।</p>
+  <p class="para">আলোচনার পর উভয় পক্ষের মতামত, প্রত্যাশা ও পরবর্তী পদক্ষেপ সম্পর্কে আলোচনা করা হয়। এই নথি উল্লিখিত তারিখে অনুষ্ঠিত পারিবারিক বৈঠক ও মতবিনিময়ের রেকর্ড হিসেবে প্রস্তুত করা হলো। এটি নিজে থেকে বিবাহ চূড়ান্ত হওয়ার প্রমাণ নয়; পরবর্তী সিদ্ধান্ত সংশ্লিষ্ট পাত্র ও পাত্রীর স্বাধীন সম্মতি এবং উভয় পরিবারের পারস্পরিক বোঝাপড়ার ভিত্তিতে গৃহীত হবে।</p>
+  <h2>DECISION / REMARKS (IF ANY)</h2><div style="height:25px;border-bottom:1px solid #bbb"></div><div class="signs"><div class="line">Signature of Groom / Male Party<br>${esc(male.name)}</div><div class="line">Signature of Bride / Female Party<br>${esc(female.name)}</div></div>
+  <h2>WITNESSES PRESENT AT THE MEETING</h2><div class="witnesses">${[1,2,3,4].map(n=>`<div><div>${n}. Name: __________________________</div><div class="witness">Signature: ________________________</div></div>`).join("")}</div><div class="signs"><div class="line">Bibah Bandhan Representative</div><div class="line">Signature &amp; Office Seal</div></div><div class="foot">CONFIDENTIAL OFFICE RECORD · For use by the concerned parties and authorised office personnel only.</div>
+  <script>window.onload=()=>setTimeout(()=>window.print(),350)</script></body></html>`;
+  const w = window.open("", "_blank"); if (!w) return toast("Please allow pop-ups to print the meeting record");
+  w.document.open(); w.document.write(doc); w.document.close();
+}
+async function uploadMeetingRecordScan(meeting) {
+  if (state.session?.role !== "admin") return toast("Only admin can upload signed meeting records");
+  if (!meeting?.meetingId) return toast("Meeting ID missing");
+  const input = document.createElement("input"); input.type="file"; input.accept="application/pdf,image/*";
+  input.onchange = async () => {
+    const file=input.files?.[0]; if(!file)return;
+    if(file.size>12*1024*1024)return toast("Please choose a file smaller than 12 MB");
+    try {
+      const result=await api("uploadMeetingRecordScan",{token:state.session.token,meetingId:meeting.meetingId,fileName:file.name||"signed-meeting-record",file:await fileToDataUrl(file)});
+      if(!result.ok)throw new Error(result.error||"Upload failed");
+      await loadDashboardData(); renderDashboard(); toast("Signed meeting record uploaded");
+    } catch(error){toast(error.message);}
+  }; input.click();
 }
 
 async function deleteMeeting(meeting) {
@@ -2866,7 +2922,7 @@ function openProfilePdf(profile) {
   if ($("#receiptSize")) $("#receiptSize").value = "a4";
   setActivePrintMode("agreement");
   $("#receiptBody").innerHTML = `
-    <div class="receipt-paper receipt-a4" id="receiptPrintArea" style="padding:34px;background:#fff;color:#241816;font-family:Arial,'Noto Sans Bengali',sans-serif">
+    <div class="receipt-paper receipt-a4 profile-share-pdf" id="receiptPrintArea" style="padding:34px;background:#fff;color:#241816;font-family:Arial,'Noto Sans Bengali',sans-serif">
       <div style="display:flex;align-items:center;gap:18px;border-bottom:3px solid #a7193f;padding-bottom:18px">
         <img src="bfi.png" alt="বিবাহ বন্ধন" style="width:92px;height:62px;object-fit:contain">
         <div style="flex:1"><h1 style="margin:0;color:#a7193f;font-size:27px">বিবাহ বন্ধন</h1><p style="margin:4px 0 0;color:#6d5550;font-size:13px">Marriage Bureau Office</p><p style="margin:5px 0 0;color:#6d5550;font-size:11px">তপন, দক্ষিণ দিনাজপুর, পশ্চিমবঙ্গ - ৭৩৩১২৭</p></div>
@@ -3094,6 +3150,7 @@ function openAgreementPrint(profile) {
       <!-- =========================
            PAGE 1 : CLIENT DETAILS
       ========================== -->
+      <div class="agreement-page-1">
 
       <div class="agreement-header">
 
@@ -3418,6 +3475,8 @@ function openAgreementPrint(profile) {
       </div>
 
 
+      </div><!-- /.agreement-page-1 -->
+
       <!-- PAGE BREAK -->
 
       <div class="agreement-page-break"></div>
@@ -3426,6 +3485,7 @@ function openAgreementPrint(profile) {
       <!-- =========================
            PAGE 2 : TERMS & CHARGES
       ========================== -->
+      <div class="agreement-page-2">
 
       <div class="agreement-page-header">
 
@@ -3638,6 +3698,8 @@ function openAgreementPrint(profile) {
 
       </div>
 
+
+      </div><!-- /.agreement-page-2 -->
 
       <!-- PAGE BREAK -->
 

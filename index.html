@@ -3194,7 +3194,7 @@
     @media print {
       body[data-print-mode="receipt"] #receiptPrintArea { width: 4in !important; min-height: 5.82in !important; }
       body[data-print-mode="agreement"] #receiptPrintArea { width: 190mm !important; min-height: 277mm !important; }
-      body[data-print-mode="agreement"] #receiptPrintArea.declaration-paper { min-height: auto !important; height: auto !important; padding: 8mm 10mm !important; }
+      body[data-print-mode="agreement"] #receiptPrintArea.declaration-paper { min-height: auto !important; height: auto !important; padding: 10mm 12mm !important; }
       body[data-print-mode="agreement"] #receiptPrintArea.declaration-paper p { font-size: 12.6px !important; line-height: 1.36 !important; margin: 2px 0 !important; }
       body[data-print-mode="agreement"] #receiptPrintArea.declaration-paper .declaration-header { padding: 4px 0 5px !important; margin-bottom: 6px !important; border-top: 1px solid rgba(167,25,63,.42) !important; border-bottom: 1px solid rgba(167,25,63,.42) !important; }
       body[data-print-mode="agreement"] #receiptPrintArea.declaration-paper .declaration-field { margin: 1px 0 !important; font-size: 12px !important; line-height: 1.22 !important; }
@@ -4435,6 +4435,422 @@ body.dashboard-mode .admin-activity-icon{
 }
 </style>
 
+
+  <style>
+    /* Admin: client Share PDF must stay on a single A4 page. Scoped only to profile PDF. */
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+      html:has(.profile-share-pdf), body:has(.profile-share-pdf) {
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.profile-share-pdf {
+        width: 210mm !important;
+        height: 297mm !important;
+        min-height: 297mm !important;
+        max-height: 297mm !important;
+        margin: 0 !important;
+        padding: 8mm !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        break-before: avoid !important;
+        break-after: avoid !important;
+        page-break-before: avoid !important;
+        page-break-after: avoid !important;
+        font-size: 10pt !important;
+      }
+      #receiptPrintArea.profile-share-pdf > div { break-inside: avoid !important; page-break-inside: avoid !important; }
+      #receiptPrintArea.profile-share-pdf h1 { font-size: 22px !important; }
+      #receiptPrintArea.profile-share-pdf h2 { font-size: 18px !important; margin-bottom: 8px !important; }
+      #receiptPrintArea.profile-share-pdf img { max-height: 210px !important; }
+    }
+  </style>
+
+
+  <style id="client-agreement-three-page-print-fix">
+  /* Client Agreement: three explicit A4 pages; scoped away from Agent Agreement. */
+  @media print {
+    @page { size: A4 portrait; margin: 0; }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 210mm !important;
+      background: #fff !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) {
+      display: block !important;
+      width: 210mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      background: #fff !important;
+      overflow: visible !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-1,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-2,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-final-page {
+      position: relative !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-sizing: border-box !important;
+      width: 210mm !important;
+      height: 297mm !important;
+      min-height: 297mm !important;
+      max-height: 297mm !important;
+      margin: 0 !important;
+      padding: 10mm 12mm !important;
+      overflow: hidden !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-1,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-2 {
+      break-after: page !important;
+      page-break-after: always !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-page-break {
+      display: none !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-watermark {
+      position: absolute !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) img {
+      max-width: 100% !important;
+    }
+
+    /* Compact but legible client detail grid on Page 1. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-layout {
+      grid-template-columns: 45mm minmax(0, 1fr) !important;
+      column-gap: 4mm !important;
+      align-items: start !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-photo {
+      width: 45mm !important;
+      height: 58mm !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 4px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-field {
+      min-width: 0 !important;
+      min-height: 0 !important;
+      padding: 4px 5px !important;
+      overflow-wrap: anywhere !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-field span {
+      font-size: 9.5px !important;
+      line-height: 1.25 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-field strong {
+      font-size: 11px !important;
+      line-height: 1.25 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-1 > .agreement-section {
+      margin-top: 7px !important;
+    }
+
+    /* Page 2: tighten terms/fee content so it remains within its A4 sheet. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-page-2 .agreement-section {
+      margin-top: 5px !important;
+      margin-bottom: 5px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-page-2 .agreement-terms li {
+      font-size: 10.5px !important;
+      line-height: 1.3 !important;
+      margin-bottom: 4px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-page-2 .agreement-highlight {
+      padding: 5px 7px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-page-2 .agreement-highlight p {
+      font-size: 9.5px !important;
+      line-height: 1.25 !important;
+      margin: 2px 0 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .service-charge-table th,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .service-charge-table td {
+      padding: 3px 5px !important;
+      font-size: 10px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-important-note {
+      font-size: 9.5px !important;
+      line-height: 1.25 !important;
+      margin-top: 4px !important;
+      padding: 5px 7px !important;
+    }
+
+    /* Page 3: keep Office Record anchored at the bottom above the footer. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page {
+      justify-content: flex-start !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .declaration-box {
+      padding: 7px 9px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .declaration-list li {
+      font-size: 9.5px !important;
+      line-height: 1.3 !important;
+      margin-bottom: 3px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .agreement-record-box {
+      margin-top: 8px !important;
+      position: static !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .signature-grid {
+      margin-top: 12px !important;
+      gap: 10px 18px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .scan-box-new {
+      margin-top: auto !important;
+      flex-shrink: 0 !important;
+      padding: 7px 10px !important;
+      border: 1.5px dashed #8d7065 !important;
+      background: #fffaf6 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .scan-box-new strong {
+      font-size: 10px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .scan-box-new span {
+      font-size: 8px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .scan-line {
+      margin-top: 16px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .agreement-footer {
+      margin-top: 5px !important;
+      padding-top: 3px !important;
+      flex-shrink: 0 !important;
+    }
+  }
+  </style>
+
+  <style id="page3-office-record-position-fix">
+    /* Legacy record-box override intentionally neutralized; scan-box-new is the footer box. */
+    @media print {
+      #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .agreement-record-box {
+        margin-top: 8px !important;
+        position: static !important;
+        top: auto !important;
+      }
+    }
+  </style>
+
+
+  <style id="client-agreement-readable-size-photo-seal-v3">
+  /* Readable client agreement print: larger typography and photo, while retaining 3 A4 pages. */
+  @media print {
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-1,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-2,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-final-page {
+      padding: 9mm 11mm !important;
+    }
+    /* Bigger client photo; the data boxes start farther to the right. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-layout {
+      grid-template-columns: 52mm minmax(0, 1fr) !important;
+      column-gap: 6mm !important;
+      align-items: start !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-photo {
+      width: 52mm !important;
+      height: 67mm !important;
+      box-sizing: border-box !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-photo img {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details {
+      padding-left: 1mm !important;
+      gap: 5px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-field {
+      padding: 5px 6px !important;
+      min-height: 0 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-field span {
+      font-size: 10.5px !important;
+      line-height: 1.3 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-field strong {
+      font-size: 12.2px !important;
+      line-height: 1.35 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-header-text h1 { font-size: 24px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-header-text p { font-size: 14px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-header-text small { font-size: 11px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-id-box span { font-size: 10px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-id-box strong { font-size: 12px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-title-box h2 { font-size: 20px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-title-box p { font-size: 12px !important; line-height: 1.45 !important; }
+    /* Larger body copy and charges on Page 2. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-page-2 .agreement-section h3 { font-size: 15px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-page-2 .agreement-section p { font-size: 12px !important; line-height: 1.45 !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-page-2 .agreement-terms li {
+      font-size: 11.5px !important;
+      line-height: 1.42 !important;
+      margin-bottom: 5px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-page-2 .agreement-highlight p { font-size: 11px !important; line-height: 1.4 !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .service-charge-table th,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .service-charge-table td { font-size: 11.5px !important; padding: 5px 6px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-important-note { font-size: 11px !important; line-height: 1.4 !important; padding: 6px 8px !important; }
+    /* Page 3 declarations and signature labels are easier to read. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .declaration-box p { font-size: 12px !important; line-height: 1.55 !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .declaration-list li { font-size: 11.5px !important; line-height: 1.42 !important; margin-bottom: 5px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .signature-box strong { font-size: 11.5px !important; }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .signature-box span { font-size: 10px !important; }
+    /* Very pale round seal guide, leaving a clean area for a real signature/stamp. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .seal-space {
+      border-color: rgba(167, 25, 63, 0.16) !important;
+      color: rgba(167, 25, 63, 0.18) !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .office-signature > strong,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .office-signature > span {
+      color: #d7c9c5 !important;
+    }
+  }
+  </style>
+
+
+  <style id="client-agreement-photo-grid-and-office-label-fix">
+    /* Client agreement Page 1: larger photo, two data boxes beside it,
+       then three data boxes per row below the photo. */
+    @media print {
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-layout {
+        display: grid !important;
+        grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        column-gap: 4mm !important;
+        row-gap: 4px !important;
+        align-items: stretch !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-photo {
+        grid-column: span 2 !important;
+        grid-row: span 3 !important;
+        width: 100% !important;
+        height: 72mm !important;
+        min-height: 72mm !important;
+        margin: 0 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-photo img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details {
+        display: contents !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details .agreement-field {
+        grid-column: span 2 !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        padding: 5px 6px !important;
+        overflow-wrap: anywhere !important;
+        align-self: stretch !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details .agreement-field span {
+        font-size: 10.5px !important;
+        line-height: 1.25 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details .agreement-field strong {
+        font-size: 12px !important;
+        line-height: 1.3 !important;
+      }
+      /* Keep the round seal guide very pale, but restore readable label text. */
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .office-signature > strong {
+        color: #3f2c27 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .office-signature > span {
+        color: #806961 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .seal-space {
+        color: rgba(167,25,63,.18) !important;
+        border-color: rgba(167,25,63,.16) !important;
+        background: #fff !important;
+      }
+    }
+  </style>
+
+
+  <style id="client-agreement-page1-page3-readable-even-boxes">
+  @media print {
+    /* Page 1: slightly larger text, but keep the six side fields uniform. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-1 {
+      font-size: 11.5px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-1 .agreement-section h3 {
+      font-size: 14px !important;
+      line-height: 1.35 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-1 .agreement-section p,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) > .agreement-page-1 .agreement-section li {
+      font-size: 11.5px !important;
+      line-height: 1.42 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      grid-auto-rows: minmax(15mm, auto) !important;
+      gap: 5px !important;
+      align-content: start !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details .agreement-field {
+      box-sizing: border-box !important;
+      min-height: 15mm !important;
+      height: 15mm !important;
+      padding: 4px 6px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      overflow: hidden !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details .agreement-field span {
+      font-size: 9.5px !important;
+      line-height: 1.2 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-client-details .agreement-field strong {
+      font-size: 11px !important;
+      line-height: 1.2 !important;
+      overflow-wrap: anywhere !important;
+    }
+    /* Page 3: enlarge declaration and office/signature text for readability. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .declaration-box p {
+      font-size: 13px !important;
+      line-height: 1.58 !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .declaration-list li {
+      font-size: 12px !important;
+      line-height: 1.48 !important;
+      margin-bottom: 5px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .agreement-record-box span {
+      font-size: 10px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .agreement-record-box strong {
+      font-size: 11.5px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .signature-box strong {
+      font-size: 12px !important;
+    }
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .agreement-final-page .signature-box span {
+      font-size: 10.5px !important;
+    }
+    /* Keep only the round seal guide pale; make its caption normal/dark. */
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .office-signature > strong,
+    body[data-print-mode="agreement"] #receiptPrintArea.agreement-paper:not(.agent-agreement-paper) .office-signature > span {
+      color: #3f2c27 !important;
+    }
+  }
+  </style>
+
 </head>
 <body class="bn protect-page">
   <header class="topbar">
@@ -5599,6 +6015,14 @@ body.dashboard-mode .admin-activity-icon{
           <div class="field">
             <label>Meeting Time</label>
             <input name="meetingTime" type="time" required>
+          </div>
+          <div class="field">
+            <label>Meeting Place</label>
+            <input name="meetingPlace" placeholder="e.g. Bride's residence / Bibah Bandhan office" required>
+          </div>
+          <div class="field full">
+            <label>Full Meeting Address</label>
+            <textarea name="meetingAddress" rows="2" placeholder="Enter complete meeting address"></textarea>
           </div>
           <div class="field">
             <label>Duration</label>
