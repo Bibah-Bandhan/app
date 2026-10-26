@@ -1825,7 +1825,7 @@ function openAgentAgreementPrint(agent) {
         <h3>Agent Declaration / এজেন্টের ঘোষণা</h3>
         <div class="declaration-box agent-declaration-box">
           <ol class="declaration-list">
-            <li>আমি <strong>${display(agent.name)}</strong> ঘোষণা করছি যে, এই Agent Agreement-এর শর্তাবলী আমি পড়েছি, বুঝেছি এবং স্বেচ্ছায় মেনে চলতে সম্মত।</li>
+            <li><span class="agent-declaration-sentence">আমি <strong class="agent-declaration-name">${display(agent.name)}</strong> ঘোষণা করছি যে, এই Agent Agreement-এর শর্তাবলী আমি পড়েছি, বুঝেছি এবং স্বেচ্ছায় মেনে চলতে সম্মত।</span></li>
             <li>আমি Client-এর তথ্য, ছবি, যোগাযোগের তথ্য ও বিবাহ বন্ধনের office resources যথাযথভাবে ব্যবহার করব এবং গোপনীয়তা রক্ষা করব।</li>
             <li>আমি কোনো ভুল তথ্য, প্রতারণা, অননুমোদিত আর্থিক লেনদেন, false promise বা office-এর নামের অপব্যবহার করব না।</li>
             <li>আমি জানি যে commission, performance increase, competition gift এবং target reward office policy ও campaign eligibility-এর উপর নির্ভরশীল।</li>

@@ -4853,6 +4853,571 @@ body.dashboard-mode .admin-activity-icon{
   }
   </style>
 
+
+
+  <style id="agent-agreement-balanced-a4-layout-v1">
+    /* Agent Agreement: balanced typography and spacing across the existing 3 A4 pages. */
+    @media print {
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page {
+        padding: 10mm 10mm 8mm !important;
+      }
+
+      /* Page 1 — profile and official support kit: clearer details, fuller cards. */
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-agreement-header {
+        padding-bottom: 10px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agreement-title-box {
+        margin: 13px 0 14px !important;
+        padding: 11px 12px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-panel {
+        margin-top: 11px !important;
+        padding: 12px !important;
+        gap: 12px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field {
+        min-height: 41px !important;
+        padding: 7px 8px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field span {
+        font-size: 8.7px !important;
+        line-height: 1.2 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field strong {
+        font-size: 11.1px !important;
+        line-height: 1.3 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-section {
+        margin-top: 14px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-grid {
+        gap: 9px !important;
+        margin-top: 8px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-card {
+        min-height: 80px !important;
+        padding: 9px 10px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-card strong {
+        font-size: 10.3px !important;
+        line-height: 1.28 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-card span,
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .support-note {
+        font-size: 9.2px !important;
+        line-height: 1.45 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .support-note {
+        margin-top: 9px !important;
+        padding: 8px 10px !important;
+      }
+
+      /* Page 2 — readable terms and a proportionate commission table. */
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agreement-title-box {
+        margin-top: 12px !important;
+        margin-bottom: 10px !important;
+        padding: 10px 12px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agent-terms-section {
+        margin-top: 8px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agreement-terms li {
+        font-size: 9.3px !important;
+        line-height: 1.42 !important;
+        margin-bottom: 3.5px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agent-page2-note {
+        font-size: 8.6px !important;
+        line-height: 1.42 !important;
+        padding: 7px 9px !important;
+        margin-top: 8px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .commission-policy-box {
+        margin-top: 10px !important;
+        padding: 8px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agent-commission-table {
+        font-size: 9px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agent-commission-table th,
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agent-commission-table td {
+        padding: 6px 5px !important;
+        line-height: 1.34 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .commission-note {
+        font-size: 8.2px !important;
+        line-height: 1.4 !important;
+        margin-top: 6px !important;
+      }
+
+      /* Page 3 — declaration, record and signatures with even spacing. */
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agreement-title-box {
+        margin-top: 12px !important;
+        margin-bottom: 13px !important;
+        padding: 11px 12px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-declaration-section {
+        margin-top: 9px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-declaration-box {
+        padding: 14px 15px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list {
+        font-size: 10.8px !important;
+        line-height: 1.58 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li {
+        padding: 8px 9px !important;
+        margin-bottom: 7px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-agreement-record {
+        margin-top: 15px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agreement-record-box {
+        gap: 9px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agreement-record-box > div {
+        padding: 9px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agreement-record-box strong {
+        font-size: 10.3px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-signature-grid {
+        margin-top: 22px !important;
+        gap: 18px 25px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-signature-grid .signature-box {
+        min-height: 74px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-signature-grid .signature-line {
+        margin-top: 31px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-office-record {
+        margin-top: 13px !important;
+        padding: 9px 10px !important;
+        font-size: 8.3px !important;
+        line-height: 1.45 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agreement-footer {
+        margin-top: 10px !important;
+        padding-top: 6px !important;
+        line-height: 1.35 !important;
+      }
+    }
+  </style>
+
+
+  <style id="agent-agreement-print-refinements-v2">
+    @media print {
+      /* PAGE 1: clearer header, larger photo and two-column profile details. */
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-agreement-header {
+        grid-template-columns: 48px minmax(0,1fr) 105px !important;
+        gap: 9px !important;
+        padding-bottom: 11px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agreement-main-logo {
+        width: 46px !important;
+        height: 46px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-main h1 {
+        font-size: 25px !important;
+        line-height: 1.2 !important;
+        margin-bottom: 3px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-main p {
+        font-size: 13px !important;
+        line-height: 1.25 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-main small {
+        font-size: 9.6px !important;
+        line-height: 1.35 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id span {
+        font-size: 8.2px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id strong {
+        font-size: 10.2px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agreement-title-box h2 {
+        font-size: 16px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agreement-title-box p {
+        font-size: 10.5px !important;
+        line-height: 1.4 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-panel {
+        grid-template-columns: 150px minmax(0,1fr) !important;
+        gap: 11px !important;
+        padding: 10px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-photo {
+        width: 150px !important;
+        height: 180px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-fields {
+        grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+        gap: 5px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field {
+        min-height: 39px !important;
+        padding: 6px 7px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field span {
+        font-size: 9.2px !important;
+        line-height: 1.2 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field strong {
+        font-size: 11.8px !important;
+        line-height: 1.28 !important;
+        overflow-wrap: anywhere !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field.full {
+        grid-column: 1 / -1 !important;
+        min-height: 42px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-section h3 {
+        font-size: 12px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-card strong {
+        font-size: 10px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-card span,
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .support-note {
+        font-size: 9px !important;
+        line-height: 1.38 !important;
+      }
+
+      /* PAGE 2: terms slightly larger, commission panel and its text more compact. */
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agreement-terms li {
+        font-size: 9.7px !important;
+        line-height: 1.4 !important;
+        margin-bottom: 3px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .commission-policy-box {
+        margin-top: 7px !important;
+        padding: 6px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .commission-policy-box h3 {
+        font-size: 10.5px !important;
+        margin-bottom: 4px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agent-commission-table {
+        font-size: 8px !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agent-commission-table th,
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .agent-commission-table td {
+        padding: 4px 4px !important;
+        line-height: 1.25 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-2 .commission-note {
+        font-size: 7.5px !important;
+        line-height: 1.28 !important;
+        margin-top: 4px !important;
+      }
+
+      /* PAGE 3: keep agent name intact on its baseline; make seal guide faint for stamping. */
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child strong {
+        white-space: nowrap !important;
+        display: inline !important;
+        vertical-align: baseline !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-signature-grid .seal-space {
+        border-color: rgba(130,130,130,.22) !important;
+        color: rgba(130,130,130,.20) !important;
+        background: transparent !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 {
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 277mm !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-office-record {
+        margin-top: auto !important;
+        margin-bottom: 0 !important;
+        padding: 7px 9px !important;
+        font-size: 7.8px !important;
+        line-height: 1.32 !important;
+        background: #fff8df !important;
+        border: 1px solid #eadcae !important;
+        box-sizing: border-box !important;
+        flex-shrink: 0 !important;
+      }
+      body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agreement-footer {
+        margin-top: 6px !important;
+        padding-top: 5px !important;
+        flex-shrink: 0 !important;
+      }
+    }
+  </style>
+
+
+<style id="agent-agreement-final-fix-v3">
+/* Agent Agreement final refinements: modal declaration and A4 print fit. */
+.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child .agent-declaration-name {
+  display:inline !important;
+  white-space:nowrap !important;
+  vertical-align:baseline !important;
+  line-height:inherit !important;
+  margin:0 !important;
+  padding:0 !important;
+  font-weight:800 !important;
+}
+.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child {
+  align-items:start !important;
+  min-width:0 !important;
+}
+.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child::after {
+  content:none !important;
+}
+.agent-agreement-paper .agent-page-3 .agent-signature-grid .seal-space {
+  position:relative !important;
+  top:6px !important;
+}
+
+@media print {
+  /* Keep both ID values safely inside the right-hand header box. */
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-agreement-header {
+    grid-template-columns:48px minmax(0,1fr) 125px !important;
+    column-gap:8px !important;
+    align-items:center !important;
+    box-sizing:border-box !important;
+    width:100% !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id {
+    min-width:0 !important;
+    max-width:100% !important;
+    box-sizing:border-box !important;
+    padding-left:6px !important;
+    overflow:hidden !important;
+    text-align:left !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id span,
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id strong {
+    display:block !important;
+    max-width:100% !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+    word-break:break-word !important;
+    box-sizing:border-box !important;
+    line-height:1.2 !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id span {
+    font-size:7.8px !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id strong {
+    font-size:9.3px !important;
+    margin:1px 0 4px !important;
+  }
+
+  /* Profile panel: one-third photo, two-thirds data. */
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-panel {
+    grid-template-columns:minmax(0,1fr) minmax(0,2fr) !important;
+    gap:10px !important;
+    align-items:stretch !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-photo {
+    width:100% !important;
+    height:210px !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-photo img,
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-photo .detail-photo {
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-fields {
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    min-width:0 !important;
+    gap:5px !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field {
+    min-width:0 !important;
+    padding:6px 7px !important;
+    overflow:hidden !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field strong {
+    overflow-wrap:anywhere !important;
+    word-break:normal !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-field.full {
+    grid-column:1 / -1 !important;
+  }
+
+  /* Larger, easier-to-read Gift / Official Kit cards. */
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-card {
+    min-height:86px !important;
+    padding:10px 11px !important;
+    box-sizing:border-box !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-card strong {
+    font-size:10.8px !important;
+    line-height:1.3 !important;
+    margin-bottom:4px !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-support-card span {
+    font-size:9.7px !important;
+    line-height:1.42 !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .support-note {
+    font-size:9.2px !important;
+    line-height:1.4 !important;
+  }
+
+  /* Same no-break name rule in the print output as in the modal preview. */
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child .agent-declaration-name {
+    display:inline !important;
+    white-space:nowrap !important;
+    vertical-align:baseline !important;
+  }
+}
+</style>
+
+
+<style id="agent-agreement-print-tune-v4">
+/* V4 refinements: wider right-aligned agreement ID, natural photo height, lower seal guide. */
+.agent-agreement-paper .agent-page-1 .agent-header-id {
+  text-align: right !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+}
+.agent-agreement-paper .agent-page-3 .agent-signature-grid .seal-space {
+  top: 14px !important;
+}
+@media print {
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-agreement-header {
+    grid-template-columns: 48px minmax(0,1fr) 154px !important;
+    column-gap: 7px !important;
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id {
+    width: 154px !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 7px 8px !important;
+    text-align: right !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id span,
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-header-id strong {
+    text-align: right !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  /* Keep photo width within its one-third column, but let height follow the actual image ratio. */
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-panel {
+    grid-template-columns: minmax(0,1fr) minmax(0,2fr) !important;
+    align-items: start !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-photo {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    align-self: start !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-photo img,
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-1 .agent-profile-photo .detail-photo {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    object-fit: contain !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-signature-grid .seal-space {
+    top: 14px !important;
+    transform: translateY(8px) !important;
+  }
+}
+</style>
+
+
+<style id="agent-agreement-seal-caption-position-v5">
+/* Move the Office Seal circle AND its caption/reference together. */
+.agent-agreement-paper .agent-page-3 .agent-signature-grid .office-signature .seal-space {
+  top: 14px !important;
+  transform: none !important;
+}
+.agent-agreement-paper .agent-page-3 .agent-signature-grid .office-signature > strong,
+.agent-agreement-paper .agent-page-3 .agent-signature-grid .office-signature > span {
+  position: relative !important;
+  top: 14px !important;
+}
+@media print {
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-signature-grid .office-signature .seal-space {
+    top: 0 !important;
+    transform: translateY(22px) !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-signature-grid .office-signature > strong,
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-signature-grid .office-signature > span {
+    position: relative !important;
+    top: 22px !important;
+  }
+}
+</style>
+
+
+<style id="agent-declaration-natural-wrap-fix">
+/* Keep declaration sentence in one normal text flow in modal and print. */
+.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child {
+  display: grid !important;
+  grid-template-columns: 22px minmax(0, 1fr) !important;
+  align-items: start !important;
+  column-gap: 6px !important;
+  min-width: 0 !important;
+  line-height: 1.8 !important;
+}
+.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child .agent-declaration-sentence {
+  display: block !important;
+  min-width: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  line-height: 1.8 !important;
+}
+.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child .agent-declaration-name {
+  display: inline !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  vertical-align: baseline !important;
+  line-height: inherit !important;
+  margin: 0 2px !important;
+  padding: 0 1px !important;
+  max-width: 100% !important;
+}
+@media print {
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child {
+    display: grid !important;
+    grid-template-columns: 22px minmax(0, 1fr) !important;
+    align-items: start !important;
+    min-width: 0 !important;
+    line-height: 1.8 !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child .agent-declaration-sentence {
+    display: block !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    line-height: 1.8 !important;
+  }
+  body[data-print-mode="agreement"] #receiptPrintArea.agent-agreement-paper .agent-page-3 .agent-declaration-box .declaration-list li:first-child .agent-declaration-name {
+    display: inline !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    vertical-align: baseline !important;
+    line-height: inherit !important;
+  }
+}
+</style>
+
 </head>
 <body class="bn protect-page">
   <header class="topbar">
